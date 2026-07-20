@@ -1,10 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type Row = { itemName: string; vendorName: string; vendorSlug: string; score: number; count: number };
+type Variant = { label: string; priceCents: number; note: string | null };
+type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null };
 type Pt = { day: string; avg: number };
 type Cat = { slug: string; name: string };
 const SCOPES: [string, string][] = [["day", "Today"], ["week", "This Week"], ["event", "This Event"], ["global", "Global"]];
+
+const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
+const range = (r: Row) => r.priceFrom == null ? "" : r.priceFrom === r.priceTo ? money(r.priceFrom) : `${money(r.priceFrom)}–${money(r.priceTo!)}`;
 
 function Graph({ series }: { series: Pt[] }) {
   if (series.length < 2) return <div className="muted" style={{ padding: "8px 2px", fontSize: 12 }}>Not enough history yet for a trend.</div>;
@@ -25,6 +29,7 @@ function Graph({ series }: { series: Pt[] }) {
 
 export default function CategoryView({ eventSlug, eventName, catSlug, cats, prev, next }: { eventSlug: string; eventName: string; catSlug: string; cats: Cat[]; prev: Cat; next: Cat }) {
   const [scope, setScope] = useState("event");
+  const [vendor, setVendor] = useState("all");
   const [data, setData] = useState<{ category: Cat; ranking: Row[]; series: Pt[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +37,14 @@ export default function CategoryView({ eventSlug, eventName, catSlug, cats, prev
     setLoading(true);
     fetch(`/api/category?eventSlug=${eventSlug}&categorySlug=${catSlug}&scope=${scope}`).then((r) => r.json()).then((d) => { setData(d); setLoading(false); });
   }, [scope, catSlug, eventSlug]);
+
+  // distinct vendors present in the current ranking (for the filter)
+  const vendors = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of data?.ranking ?? []) m.set(r.vendorSlug, r.vendorName);
+    return Array.from(m.entries());
+  }, [data]);
+  const rows = (data?.ranking ?? []).filter((r) => vendor === "all" || r.vendorSlug === vendor);
 
   return (
     <main className="wrap" style={{ maxWidth: 680 }}>
@@ -54,20 +67,42 @@ export default function CategoryView({ eventSlug, eventName, catSlug, cats, prev
         ))}
       </div>
 
+      {/* vendor filter — one vendor or the whole event */}
+      {vendors.length > 1 && (
+        <div className="vfilter">
+          <span>Show</span>
+          <select value={vendor} onChange={(e) => setVendor(e.target.value)}>
+            <option value="all">All vendors at {eventName}</option>
+            {vendors.map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}
+          </select>
+        </div>
+      )}
+
       <div className="card" style={{ padding: "12px 14px 6px", marginBottom: 14 }}>
         <div className="eyebrow" style={{ margin: "0 0 4px" }}>Rating trend</div>
         <Graph series={data?.series ?? []} />
       </div>
 
       <div className="card" style={{ opacity: loading ? 0.55 : 1, transition: "opacity .2s" }}>
-        {(data?.ranking ?? []).map((r, i) => (
-          <a className={`row ${i === 0 ? "top" : ""} ${r.score < 5 ? "worst" : ""}`} href={`/v/${r.vendorSlug}`} key={r.vendorSlug + r.itemName}>
+        {rows.map((r, i) => (
+          <div className={`crow ${i === 0 ? "top" : ""} ${r.score < 5 ? "worst" : ""}`} key={r.itemId}>
             <div className="rank">{i + 1}</div>
-            <div><div className="v-name">{r.vendorName}</div><div className="v-sub">{r.itemName} · <span className="tnum">{r.count.toLocaleString()}</span> ratings</div></div>
+            <div className="grow">
+              <div className="crow-head">
+                <a className="v-name" href={`/v/${r.vendorSlug}`}>{r.vendorName}</a>
+                {range(r) && <span className="pricerange tnum">{range(r)}</span>}
+              </div>
+              <div className="v-sub">{r.itemName} · <span className="tnum">{r.count.toLocaleString()}</span> ratings</div>
+              {r.variants.length > 0 && (
+                <div className="portions">
+                  {r.variants.map((v) => <span className="portion" key={v.label} title={v.note ?? undefined}><b>{v.label}</b> <span className="tnum">{money(v.priceCents)}</span></span>)}
+                </div>
+              )}
+            </div>
             <div className="score"><div className="bar"><i style={{ width: `${Math.max(4, r.score * 10)}%` }} /></div><div className="sc tnum">{r.score.toFixed(1)}</div></div>
-          </a>
+          </div>
         ))}
-        {!loading && (data?.ranking.length ?? 0) === 0 && <div style={{ padding: 18, color: "var(--muted)", fontSize: 13 }}>No rated entries in this window yet.</div>}
+        {!loading && rows.length === 0 && <div style={{ padding: 18, color: "var(--muted)", fontSize: 13 }}>No rated entries in this window yet.</div>}
       </div>
     </main>
   );

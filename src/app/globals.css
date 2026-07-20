@@ -171,3 +171,30 @@ a{color:inherit;text-decoration:none}
 .catchip { flex:0 0 auto; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--muted); font-size:12.5px; font-weight:600; text-decoration:none; white-space:nowrap; transition:all .12s; }
 .catchip:hover { border-color:var(--accent); color:var(--accent-ink); }
 .catchip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+/* ── v0.13.0 portion/size pricing + vendor filter ── */
+
+/* category ranking row w/ portions (div, not a link — vendor name is the link) */
+.crow { display:grid; grid-template-columns:26px 1fr auto; gap:12px; align-items:start; padding:13px 18px; border-top:1px solid var(--line); }
+.crow:first-child { border-top:0; }
+.crow .rank { padding-top:2px; }
+.crow.top .rank { color:var(--gold); }
+.crow.worst .bar>i { background:linear-gradient(90deg,#d98a6a,var(--bad)); }
+.crow .score { padding-top:1px; align-self:start; }
+.crow-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.crow-head .v-name { text-decoration:none; color:inherit; }
+.crow-head .v-name:hover { color:var(--accent-ink); }
+.pricerange { font-size:13px; font-weight:700; color:var(--accent-ink); white-space:nowrap; }
+
+/* portion/size chips (Half rack $16 · Full rack $28 · Small/Med/Large) */
+.portions { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.portion { font-size:12px; padding:3px 9px; border-radius:8px; background:var(--surface2); border:1px solid var(--line); color:var(--ink); white-space:nowrap; }
+.portion b { font-weight:650; }
+
+/* vendor filter (this vendor / whole event) */
+.vfilter { display:flex; align-items:center; gap:8px; margin:2px 0 12px; font-size:13px; color:var(--muted); }
+.vfilter select { flex:1; max-width:340px; padding:8px 11px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:13px; font-weight:600; }
+
+/* vendor-page menu: portion pricing under each item */
+.menu-portions { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.menu-portion { font-size:12px; padding:3px 9px; border-radius:8px; background:var(--surface2); border:1px solid var(--line); color:var(--ink); white-space:nowrap; }
+.menu-portion b { font-weight:650; }

@@ -15,17 +15,23 @@ export async function GET(req: Request) {
 
   const itemWhere: Record<string, unknown> = { categoryId: category.id };
   if (scope !== "global" && event) itemWhere.vendor = { appearances: { some: { eventId: event.id } } };
-  const items = await db.item.findMany({ where: itemWhere, include: { vendor: true }, take: 40 });
+  const items = await db.item.findMany({ where: itemWhere, include: { vendor: true, variants: { orderBy: { sortOrder: "asc" } } }, take: 40 });
   const itemIds = items.map((i) => i.id);
 
   const now = new Date();
   const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
   const weekAgo = new Date(now.getTime() - 7 * 864e5);
 
-  type Row = { itemName: string; vendorName: string; vendorSlug: string; score: number; count: number };
+  type Variant = { label: string; priceCents: number; note: string | null };
+  type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null };
+  const build = (i: (typeof items)[number], score: number, count: number): Row => {
+    const variants: Variant[] = i.variants.map((v) => ({ label: v.label, priceCents: v.priceCents, note: v.note }));
+    const prices = variants.length ? variants.map((v) => v.priceCents) : (i.typicalPriceCents != null ? [i.typicalPriceCents] : []);
+    return { itemId: i.id, itemName: i.name, vendorName: i.vendor.name, vendorSlug: i.vendor.slug, score, count, description: i.description, variants, priceFrom: prices.length ? Math.min(...prices) : null, priceTo: prices.length ? Math.max(...prices) : null };
+  };
   let ranking: Row[];
   if (scope === "global") {
-    ranking = items.map((i) => ({ itemName: i.name, vendorName: i.vendor.name, vendorSlug: i.vendor.slug, score: i.ratingAvg, count: i.ratingCount }));
+    ranking = items.map((i) => build(i, i.ratingAvg, i.ratingCount));
   } else {
     const rWhere: Record<string, unknown> = { itemId: { in: itemIds } };
     if (scope === "event" && event) rWhere.eventId = event.id;
@@ -33,7 +39,7 @@ export async function GET(req: Request) {
     if (scope === "day") rWhere.createdAt = { gte: dayStart };
     const grp = await db.rating.groupBy({ by: ["itemId"], where: rWhere, _avg: { score: true }, _count: { _all: true } });
     const m = new Map(grp.map((g) => [g.itemId, { avg: g._avg.score ?? 0, count: g._count._all }]));
-    ranking = items.map((i) => { const s = m.get(i.id); return { itemName: i.name, vendorName: i.vendor.name, vendorSlug: i.vendor.slug, score: s ? Math.round(s.avg * 10) / 10 : 0, count: s?.count ?? 0 }; });
+    ranking = items.map((i) => { const s = m.get(i.id); return build(i, s ? Math.round(s.avg * 10) / 10 : 0, s?.count ?? 0); });
   }
   ranking = ranking.filter((r) => r.count > 0).sort((a, b) => b.score - a.score).slice(0, 20);
 

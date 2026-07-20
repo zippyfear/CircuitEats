@@ -14,7 +14,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const vendor = await db.vendor.findUnique({
     where: { slug },
     include: {
-      items: { orderBy: { ratingAvg: "desc" }, include: { category: true } },
+      items: { orderBy: { ratingAvg: "desc" }, include: { category: true, variants: { orderBy: { sortOrder: "asc" } } } },
       appearances: { include: { event: true }, take: 1 },
       photos: { orderBy: { createdAt: "desc" }, take: 8 },
     },
@@ -87,18 +87,28 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
       <div className="eyebrow">{cfg.vocab.offeringPlural} · tap ★ to rate{cfg.features.ordering ? " · order ahead available" : ""}</div>
       <div className="card">
-        {vendor.items.map((it) => (
-          <div className="item" key={it.id}>
-            <div className="info">
-              <div className="nm">{it.name}</div>
-              <div className="mt">
-                <span className="s">★ {it.ratingAvg.toFixed(1)}</span> · {it.category?.name ?? "Other"} · {it.ratingCount.toLocaleString()} ratings
+        {vendor.items.map((it) => {
+          const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
+          const prices = it.variants.length ? it.variants.map((v) => v.priceCents) : (it.typicalPriceCents != null ? [it.typicalPriceCents] : []);
+          const lo = prices.length ? Math.min(...prices) : null, hi = prices.length ? Math.max(...prices) : null;
+          return (
+            <div className="item" key={it.id}>
+              <div className="info">
+                <div className="nm">{it.name}</div>
+                <div className="mt">
+                  <span className="s">★ {it.ratingAvg.toFixed(1)}</span> · {it.category?.name ?? "Other"} · {it.ratingCount.toLocaleString()} ratings
+                </div>
+                {it.variants.length > 0 && (
+                  <div className="menu-portions">
+                    {it.variants.map((v) => <span className="menu-portion" key={v.id} title={v.note ?? undefined}><b>{v.label}</b> <span className="tnum">{money(v.priceCents)}</span></span>)}
+                  </div>
+                )}
               </div>
+              <div className="price tnum">{lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
+              <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} />
             </div>
-            <div className="price tnum">{it.typicalPriceCents ? `$${(it.typicalPriceCents / 100).toFixed(0)}` : ""}</div>
-            <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="foot">Ratings here roll up to {vendor.name}&apos;s global reputation — across every event on the circuit.</div>
