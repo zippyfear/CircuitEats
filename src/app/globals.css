@@ -201,3 +201,13 @@ a{color:inherit;text-decoration:none}
 /* ── v0.15.0 per-unit average price ── */
 .avgtag { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-left:3px; }
 .perunit { font-size:11px; font-weight:600; color:var(--muted); }
+/* ── v0.15.1 global site footer: SmokeStack hosting credit ── */
+.sitefoot { border-top:1px solid var(--line); background:var(--surface2); margin-top:8px; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); }
+.sitefoot-in { max-width:940px; margin:0 auto; display:flex; gap:12px; align-items:flex-start; }
+.sitefoot-flame { font-size:20px; line-height:1.2; flex:0 0 auto; }
+.sitefoot-lead { font-size:13.5px; font-weight:650; color:var(--ink); letter-spacing:-.01em; }
+.sitefoot-lead a { color:var(--accent-ink); text-decoration:none; }
+.sitefoot-lead a:hover { text-decoration:underline; }
+.sitefoot-blurb { font-size:12.5px; color:var(--muted); line-height:1.6; margin-top:3px; max-width:640px; }
+.sitefoot-blurb a { color:var(--accent-ink); text-decoration:none; font-weight:600; white-space:nowrap; }
+.sitefoot-blurb a:hover { text-decoration:underline; }
