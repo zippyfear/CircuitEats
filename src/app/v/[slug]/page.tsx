@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import RateWidget from "@/components/RateWidget";
 import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
+import WaitWidget from "@/components/WaitWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,10 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
           <div className="n" style={{ fontSize: 15 }}>{vendor.homeBase ?? "—"}</div>
         </div>
       </div>
+
+      {cfg.features.waitTimes && appearance && (
+        <WaitWidget appearanceId={appearance.id} initialWait={appearance.currentWaitMin} rating={vendor.ratingAvg} />
+      )}
 
       <div className="eyebrow">{cfg.vocab.offeringPlural} · tap ★ to rate{cfg.features.ordering ? " · order ahead available" : ""}</div>
       <div className="card">

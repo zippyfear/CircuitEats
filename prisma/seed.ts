@@ -39,6 +39,12 @@ const VENDORS = [
   ]},
 ];
 
+// Seeded live wait times per Elkhorn booth (§15 #1 Worth-the-Wait)
+const WAITS: Record<string, number> = {
+  "Cowboys BBQ": 34, "Aussom Aussie": 12, "BBQ King Smokehouse": 18,
+  "Smoke & Barrel": 6, "Franklin Road Smoke": 22, "Big Show BBQ": 8,
+};
+
 async function main() {
   // Categories
   const cat: Record<string, string> = {};
@@ -100,14 +106,16 @@ async function main() {
       },
     });
 
-    // Appearance at Elkhorn
+    // Appearance at Elkhorn (+ seeded live wait time)
+    const waitMin = WAITS[v.name] ?? null;
     await db.appearance.upsert({
       where: { vendorId_eventId: { vendorId: vendor.id, eventId: event.id } },
-      update: {},
+      update: { currentWaitMin: waitMin, waitUpdatedAt: new Date() },
       create: {
         vendorId: vendor.id, eventId: event.id,
         boothLabel: `Booth ${VENDORS.indexOf(v) + 1}`,
         qrSlug: `${slug(v.name)}-elkhorn26`,
+        currentWaitMin: waitMin, waitUpdatedAt: new Date(),
       },
     });
 
