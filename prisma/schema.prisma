@@ -145,6 +145,7 @@ model User {
   badges        UserBadge[]
   memberships   Membership[]                  // roles: platform/event/vendor (§20.4)
   votes         Vote[]                        // People's Choice (§15 #6)
+  auditLogs     AuditLog[]     @relation("AuditActor")
   claimedVendor Vendor?        @relation("VendorOwner")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -484,4 +485,30 @@ model PromoStat {
   @@index([messageId, kind])
   @@index([eventId, kind])
   @@index([city, kind])
+}
+
+// ── Admin audit trail: who changed what, when — with before/after for rollback ──
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ROLLBACK
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String
+  actor      User        @relation("AuditActor", fields: [actorId], references: [id])
+  action     AuditAction
+  entityType String                              // "User" | "Event" | "Vendor" | "Item" | "Membership"
+  entityId   String
+  label      String?                             // human summary (entity name / what changed)
+  before     Json?                               // snapshot before (null for CREATE)
+  after      Json?                               // snapshot after (null for DELETE)
+  reverted   Boolean     @default(false)
+  revertedAt DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

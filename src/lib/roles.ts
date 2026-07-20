@@ -20,3 +20,16 @@ export async function isEventCoordinator(userId: string, eventId: string) {
   const m = await db.membership.findFirst({ where: { userId, scope: "EVENT", targetId: eventId, role: "COORDINATOR" } });
   return !!m;
 }
+
+// Platform admin = a PLATFORM/ADMIN Membership. Gates the admin console + APIs.
+export async function isPlatformAdmin(userId: string) {
+  const m = await db.membership.findFirst({ where: { userId, scope: "PLATFORM", role: "ADMIN" } });
+  return !!m;
+}
+
+// Convenience: the signed-in user IF they are a platform admin, else null.
+export async function currentAdmin() {
+  const user = await currentUser();
+  if (!user || !(await isPlatformAdmin(user.id))) return null;
+  return user;
+}
