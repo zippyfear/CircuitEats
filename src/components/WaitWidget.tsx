@@ -6,7 +6,7 @@ function worth(rating: number, wait: number | null): number | null {
   return Math.round((rating / wait) * 100) / 10;
 }
 
-export default function WaitWidget({ appearanceId, initialWait, rating }: { appearanceId: string; initialWait: number | null; rating: number; }) {
+export default function WaitWidget({ appearanceId, initialWait, rating, authed }: { appearanceId: string; initialWait: number | null; rating: number; authed: boolean; }) {
   const [wait, setWait] = useState<number | null>(initialWait);
   const [busy, setBusy] = useState(false);
   const [thanks, setThanks] = useState(false);
@@ -38,10 +38,16 @@ export default function WaitWidget({ appearanceId, initialWait, rating }: { appe
         </div>
       </div>
       <div className="wait-report">
-        <span className="lbl">{thanks ? "thanks! ✓" : "Report the line:"}</span>
-        {[5, 15, 30, 45, 60].map((m) => (
-          <button key={m} disabled={busy} onClick={() => report(m)}>{m}m</button>
-        ))}
+        {authed ? (
+          <>
+            <span className="lbl">{thanks ? "thanks! ✓" : "Report the line:"}</span>
+            {[5, 15, 30, 45, 60].map((m) => (
+              <button key={m} disabled={busy} onClick={() => report(m)}>{m}m</button>
+            ))}
+          </>
+        ) : (
+          <a href="/signin" className="authlink">Sign in to report the line →</a>
+        )}
       </div>
     </div>
   );

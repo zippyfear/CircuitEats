@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import RateWidget from "@/components/RateWidget";
 import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 import WaitWidget from "@/components/WaitWidget";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const worst = vendor.ratingAvg < 5;
   // Config-driven vocabulary + feature-flags (§20) — resolved from this event's preset + overrides.
   const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
+  const authed = !!(await auth())?.user; // view is open; rating/wait actions gated on sign-in
 
   return (
     <main className="wrap">
@@ -53,7 +55,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
       </div>
 
       {cfg.features.waitTimes && appearance && (
-        <WaitWidget appearanceId={appearance.id} initialWait={appearance.currentWaitMin} rating={vendor.ratingAvg} />
+        <WaitWidget appearanceId={appearance.id} initialWait={appearance.currentWaitMin} rating={vendor.ratingAvg} authed={authed} />
       )}
 
       <div className="eyebrow">{cfg.vocab.offeringPlural} · tap ★ to rate{cfg.features.ordering ? " · order ahead available" : ""}</div>
@@ -67,7 +69,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
               </div>
             </div>
             <div className="price tnum">{it.typicalPriceCents ? `$${(it.typicalPriceCents / 100).toFixed(0)}` : ""}</div>
-            <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} />
+            <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} />
           </div>
         ))}
       </div>

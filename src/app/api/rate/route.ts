@@ -2,17 +2,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-// Attribute to the signed-in user; fall back to a shared "web guest" when anonymous.
-async function currentUserId() {
-  const session = await auth();
-  if (session?.user?.id) return session.user.id;
-  const guest = await db.user.upsert({
-    where: { email: "webguest@circuiteats.app" },
-    update: {},
-    create: { email: "webguest@circuiteats.app", displayName: "Web Guest", reviewerScore: 0.5 },
-  });
-  return guest.id;
-}
+// Rating requires sign-in (viewing is open; write actions are gated).
 
 function weightedAvg(rows: { score: number; weight: number }[]) {
   if (rows.length === 0) return { avg: 0, count: 0 };
@@ -22,11 +12,13 @@ function weightedAvg(rows: { score: number; weight: number }[]) {
 }
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Sign in to rate." }, { status: 401 });
+  const userId = session.user.id;
   const { itemId, vendorId, score } = await req.json();
   if (!itemId || !vendorId || typeof score !== "number" || score < 1 || score > 10) {
     return NextResponse.json({ error: "Provide itemId, vendorId, and a score 1–10." }, { status: 400 });
   }
-  const userId = await currentUserId();
 
   await db.rating.upsert({
     where: { userId_itemId: { userId, itemId } },

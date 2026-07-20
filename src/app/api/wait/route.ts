@@ -3,16 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
 // Worth-the-Wait (§15 #1): crowd wait reports → rolling median → Appearance.currentWaitMin.
-async function currentUserId() {
-  const session = await auth();
-  if (session?.user?.id) return session.user.id;
-  const guest = await db.user.upsert({
-    where: { email: "webguest@circuiteats.app" },
-    update: {},
-    create: { email: "webguest@circuiteats.app", displayName: "Web Guest", reviewerScore: 0.5 },
-  });
-  return guest.id;
-}
+// Reporting requires sign-in (viewing is open; write actions are gated).
 
 function median(ns: number[]): number | null {
   if (!ns.length) return null;
@@ -28,11 +19,13 @@ export function worthWait(rating: number, waitMin: number | null): number | null
 }
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Sign in to report a wait." }, { status: 401 });
+  const userId = session.user.id;
   const { appearanceId, waitMin } = await req.json();
   if (!appearanceId || typeof waitMin !== "number" || waitMin < 0 || waitMin > 240) {
     return NextResponse.json({ error: "Provide appearanceId and waitMin (0–240)." }, { status: 400 });
   }
-  const userId = await currentUserId();
   await db.waitReport.create({ data: { userId, appearanceId, waitMin } });
 
   const since = new Date(Date.now() - 30 * 60_000); // 30-min rolling window

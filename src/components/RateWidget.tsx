@@ -1,11 +1,20 @@
 "use client";
 import { useState } from "react";
 
-export default function RateWidget({ itemId, vendorId, current }: { itemId: string; vendorId: string; current: number; }) {
+export default function RateWidget({ itemId, vendorId, current, authed }: { itemId: string; vendorId: string; current: number; authed: boolean; }) {
   const [open, setOpen] = useState(false);
   const [avg, setAvg] = useState(current);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+
+  if (!authed) {
+    return (
+      <a href="/signin" title="Sign in to rate"
+        style={{ width: 40, height: 34, borderRadius: 17, display: "grid", placeItems: "center", background: "var(--surface2)", color: "var(--muted)", fontWeight: 800, fontSize: 15 }}>
+        ★
+      </a>
+    );
+  }
 
   async function rate(score: number) {
     setBusy(true);
