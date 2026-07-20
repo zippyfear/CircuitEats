@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import RateWidget from "@/components/RateWidget";
 import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 import WaitWidget from "@/components/WaitWidget";
-import { auth } from "@/auth";
+import { currentUser } from "@/lib/roles";
+import ClaimButton from "@/components/ClaimButton";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,17 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const worst = vendor.ratingAvg < 5;
   // Config-driven vocabulary + feature-flags (§20) — resolved from this event's preset + overrides.
   const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
-  const authed = !!(await auth())?.user; // view is open; rating/wait actions gated on sign-in
+  const me = await currentUser(); // view is open; rating/wait actions gated on sign-in
+  const authed = !!me;
+  const isOwner = !!me && vendor.ownerUserId === me.id;
+  const canClaim = !!me && !vendor.claimed;
+  const links = Array.isArray(vendor.customLinks) ? (vendor.customLinks as { label: string; url: string }[]) : [];
 
   return (
     <main className="wrap">
       <a className="back" href="/">‹ All vendors</a>
       <div className="vhero">
+        {vendor.logoUrl && <img src={vendor.logoUrl} alt="" className="vlogo" />}
         {vendor.ratingCount > 15000 && <span className="ontour">◎ On tour</span>}
         <div>
           <h1>{vendor.name}</h1>
@@ -53,6 +59,14 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
           <div className="n" style={{ fontSize: 15 }}>{vendor.homeBase ?? "—"}</div>
         </div>
       </div>
+
+      {isOwner && <a className="editlink" href={`/v/${vendor.slug}/edit`}>✎ Edit your vendor page</a>}
+      {canClaim && <ClaimButton vendorId={vendor.id} />}
+      {links.length > 0 && (
+        <div className="vlinks">
+          {links.map((l, i) => <a key={i} className="vlink" href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>)}
+        </div>
+      )}
 
       {cfg.features.waitTimes && appearance && (
         <WaitWidget appearanceId={appearance.id} initialWait={appearance.currentWaitMin} rating={vendor.ratingAvg} authed={authed} />
