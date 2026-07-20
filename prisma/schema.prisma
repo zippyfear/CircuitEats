@@ -218,6 +218,8 @@ model Event {
   name            String
   slug            String       @unique
   venue           String?
+  city            String?                   // promo segmentation (per city)
+  region          String?                   // promo segmentation (state/area)
   lat             Float?
   lng             Float?
   geohash         String?                   // proximity prefix index (§15 #2 "near me")
@@ -449,4 +451,37 @@ model ItemVariant {
   createdAt  DateTime @default(now())
 
   @@index([itemId, sortOrder])
+}
+
+// ── SmokeStack host-promo rotation + CTR tracking (per event/city/region) ──
+enum PromoKind {
+  IMPRESSION
+  CLICK
+}
+
+model PromoMessage {
+  id        String      @id @default(cuid())
+  lead      String                              // headline line
+  blurb     String                              // one-line description
+  ctaLabel  String                              // link text
+  url       String      @default("https://smokestackpit.com")
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  stats     PromoStat[]
+}
+
+model PromoStat {
+  id        String       @id @default(cuid())
+  messageId String
+  message   PromoMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  kind      PromoKind
+  eventId   String?                             // segment: which event context (null = global browsing)
+  city      String?                             // segment: city
+  region    String?                             // segment: area/state
+  userId    String?                             // logged-in viewer
+  createdAt DateTime     @default(now())
+
+  @@index([messageId, kind])
+  @@index([eventId, kind])
+  @@index([city, kind])
 }
