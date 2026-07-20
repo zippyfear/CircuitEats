@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PhotoUpload from "@/components/PhotoUpload";
 
 type Item = { id: string; name: string; typicalPriceCents: number | null; categoryId: string | null };
 type Link = { label: string; url: string };
-type Vendor = { id: string; name: string; slug: string; bio: string | null; website: string | null; homeBase: string | null; logoUrl: string | null; customLinks: Link[] | null; items: Item[] };
+type Photo = { id: string; url: string };
+type Vendor = { id: string; name: string; slug: string; bio: string | null; website: string | null; homeBase: string | null; logoUrl: string | null; customLinks: Link[] | null; items: Item[]; photos: Photo[] };
 
 const input: React.CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 14, marginBottom: 10 };
 
@@ -53,8 +55,12 @@ export default function VendorEditForm({ vendor }: { vendor: Vendor; categories:
         <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" style={input} />
         <label className="muted">Home base</label>
         <input value={homeBase} onChange={(e) => setHomeBase(e.target.value)} placeholder="City, ST" style={input} />
-        <label className="muted">Logo image URL</label>
-        <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" style={input} />
+        <label className="muted">Logo</label>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+          {logoUrl && <img src={logoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover" }} />}
+          <PhotoUpload vendorId={vendor.id} asLogo label="Upload logo" />
+        </div>
+        <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="…or paste an image URL" style={input} />
         <label className="muted">Custom links / CTAs</label>
         {links.map((l, i) => (
           <div key={i} style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -65,6 +71,16 @@ export default function VendorEditForm({ vendor }: { vendor: Vendor; categories:
         ))}
         <button onClick={() => setLinks([...links, { label: "", url: "" }])} style={{ background: "none", border: 0, cursor: "pointer", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>+ Add link</button>
         <div style={{ marginTop: 14 }}><button className="cta" onClick={saveProfile}>{saved ? "Saved ✓" : "Save profile"}</button></div>
+      </div>
+
+      <div className="eyebrow">Photos</div>
+      <div className="card" style={{ padding: 16 }}>
+        {vendor.photos.length > 0 && (
+          <div className="photostrip" style={{ marginBottom: 10 }}>
+            {vendor.photos.map((p) => <img key={p.id} src={p.url} alt="" className="photo" />)}
+          </div>
+        )}
+        <PhotoUpload vendorId={vendor.id} label="+ Add photo" />
       </div>
 
       <div className="eyebrow">Menu &amp; pricing</div>

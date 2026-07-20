@@ -16,6 +16,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
     include: {
       items: { orderBy: { ratingAvg: "desc" }, include: { category: true } },
       appearances: { include: { event: true }, take: 1 },
+      photos: { orderBy: { createdAt: "desc" }, take: 8 },
     },
   });
   if (!vendor) notFound();
@@ -71,6 +72,12 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
       {links.length > 0 && (
         <div className="vlinks">
           {links.map((l, i) => <a key={i} className="vlink" href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>)}
+        </div>
+      )}
+
+      {vendor.photos.length > 0 && (
+        <div className="photostrip" style={{ marginBottom: 12 }}>
+          {vendor.photos.map((p) => <img key={p.id} src={p.url} alt="" className="photo" />)}
         </div>
       )}
 
