@@ -18,6 +18,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const theme = (cfg.theme ?? {}) as { accent?: string; bannerUrl?: string; logoUrl?: string };
   const board = event.appearances.map((a) => a.vendor).sort((x, y) => y.ratingAvg - x.ratingAvg);
 
+  // categories present at this event → "browse by category" chips
+  const catApps = await db.appearance.findMany({ where: { eventId: event.id }, include: { vendor: { include: { items: { include: { category: true } } } } } });
+  const catChipMap = new Map<string, { slug: string; name: string; sortOrder: number }>();
+  for (const a of catApps) for (const it of a.vendor.items) if (it.category) catChipMap.set(it.category.slug, { slug: it.category.slug, name: it.category.name, sortOrder: it.category.sortOrder });
+  const catChips = Array.from(catChipMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+
   // People's Choice data (§15 #6): categories with ≥2 candidate vendors at this event + live tallies.
   type VCat = { categoryId: string; name: string; myVendorId: string | null; candidates: { vendorId: string; name: string; votes: number }[] };
   let voting: VCat[] = [];
@@ -66,6 +72,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </a>
         ))}
       </div>
+
+      {catChips.length > 0 && <>
+        <div className="eyebrow">Browse by category — see where every {cfg.vocab.participant} ranks</div>
+        <div className="catchips" style={{ marginBottom: 18 }}>
+          {catChips.map((c) => <a key={c.slug} className="catchip" href={`/e/${slug}/c/${c.slug}`}>{c.name} ›</a>)}
+        </div>
+      </>}
 
       {cfg.features.voting && voting.length > 0 && <PeoplesChoice eventId={event.id} data={voting} authed={!!me} />}
     </main>
