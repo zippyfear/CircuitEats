@@ -198,6 +198,7 @@ model Item {
   category     Category? @relation(fields: [categoryId], references: [id])
   description  String?
   typicalPriceCents Int?                   // money = cents
+  unit         String?                     // priced-by unit for per-unit avg ("rib", "lb", "link"); null = no natural unit
   variants     ItemVariant[]              // portion/size pricing (Small/Med/Large, 3-bones/half-rack/full-rack)
   dietaryTags  String[]                    // ["GF","spicy","veg"] (§15 #9)
   ratingAvg    Float     @default(0)
@@ -442,6 +443,7 @@ model ItemVariant {
   item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
   label      String                          // "Half rack", "3 bones", "Large", "1/2 lb"
   priceCents Int                             // money = cents
+  qty        Float?                           // # of base units in this portion (2 bones=2, half rack=6, full rack=12)
   note       String?                         // optional portion detail
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())

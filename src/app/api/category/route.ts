@@ -22,12 +22,15 @@ export async function GET(req: Request) {
   const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
   const weekAgo = new Date(now.getTime() - 7 * 864e5);
 
-  type Variant = { label: string; priceCents: number; note: string | null };
-  type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null };
+  type Variant = { label: string; priceCents: number; note: string | null; qty: number | null };
+  type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null; unit: string | null; avgUnitCents: number | null };
   const build = (i: (typeof items)[number], score: number, count: number): Row => {
-    const variants: Variant[] = i.variants.map((v) => ({ label: v.label, priceCents: v.priceCents, note: v.note }));
+    const variants: Variant[] = i.variants.map((v) => ({ label: v.label, priceCents: v.priceCents, note: v.note, qty: v.qty }));
     const prices = variants.length ? variants.map((v) => v.priceCents) : (i.typicalPriceCents != null ? [i.typicalPriceCents] : []);
-    return { itemId: i.id, itemName: i.name, vendorName: i.vendor.name, vendorSlug: i.vendor.slug, score, count, description: i.description, variants, priceFrom: prices.length ? Math.min(...prices) : null, priceTo: prices.length ? Math.max(...prices) : null };
+    // average price per single base unit (e.g. per rib) across every option that declares a qty
+    const wq = variants.filter((v) => v.qty != null && v.qty > 0);
+    const avgUnitCents = i.unit && wq.length ? Math.round(wq.reduce((s, v) => s + v.priceCents / (v.qty as number), 0) / wq.length) : null;
+    return { itemId: i.id, itemName: i.name, vendorName: i.vendor.name, vendorSlug: i.vendor.slug, score, count, description: i.description, variants, priceFrom: prices.length ? Math.min(...prices) : null, priceTo: prices.length ? Math.max(...prices) : null, unit: i.unit ?? null, avgUnitCents };
   };
   let ranking: Row[];
   if (scope === "global") {

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PhotoUpload from "@/components/PhotoUpload";
 
-type Variant = { id?: string; label: string; priceCents: number; note: string | null };
-type Item = { id: string; name: string; typicalPriceCents: number | null; categoryId: string | null; variants: Variant[] };
+type Variant = { id?: string; label: string; priceCents: number; note: string | null; qty: number | null };
+type Item = { id: string; name: string; typicalPriceCents: number | null; categoryId: string | null; unit: string | null; variants: Variant[] };
 type Link = { label: string; url: string };
 type Photo = { id: string; url: string };
 type Cat = { id: string; name: string };
@@ -27,9 +27,9 @@ export default function VendorEditForm({ vendor, categories }: { vendor: Vendor;
       body: JSON.stringify({ vendorId: vendor.id, bio, website, homeBase, logoUrl, customLinks: links }) });
     setSaved(true); setTimeout(() => setSaved(false), 1600); router.refresh();
   }
-  async function saveItem(itemId: string | null, name: string, categoryId: string, variants: Variant[]) {
+  async function saveItem(itemId: string | null, name: string, categoryId: string, unit: string, variants: Variant[]) {
     await fetch("/api/item", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vendorId: vendor.id, itemId: itemId ?? undefined, name, categoryId: categoryId || null, variants }) });
+      body: JSON.stringify({ vendorId: vendor.id, itemId: itemId ?? undefined, name, categoryId: categoryId || null, unit: unit || null, variants }) });
     router.refresh();
   }
   async function delItem(id: string) {
@@ -39,7 +39,7 @@ export default function VendorEditForm({ vendor, categories }: { vendor: Vendor;
   }
   async function addItem() {
     if (!ni.name.trim()) return;
-    await saveItem(null, ni.name, ni.categoryId, []);
+    await saveItem(null, ni.name, ni.categoryId, "", []);
     setNi({ name: "", categoryId: "" });
   }
 
@@ -104,25 +104,31 @@ export default function VendorEditForm({ vendor, categories }: { vendor: Vendor;
 
 const money = (c: number) => (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
 
-function ItemEditor({ item, categories, onSave, onDelete }: { item: Item; categories: Cat[]; onSave: (itemId: string | null, name: string, categoryId: string, variants: Variant[]) => void; onDelete: (id: string) => void }) {
+function ItemEditor({ item, categories, onSave, onDelete }: { item: Item; categories: Cat[]; onSave: (itemId: string | null, name: string, categoryId: string, unit: string, variants: Variant[]) => void; onDelete: (id: string) => void }) {
   const [name, setName] = useState(item.name);
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
-  const [rows, setRows] = useState<{ label: string; price: string; note: string }[]>(
+  const [unit, setUnit] = useState(item.unit ?? "");
+  const [rows, setRows] = useState<{ label: string; price: string; note: string; qty: string }[]>(
     item.variants.length
-      ? item.variants.map((v) => ({ label: v.label, price: money(v.priceCents), note: v.note ?? "" }))
-      : (item.typicalPriceCents != null ? [{ label: "Regular", price: money(item.typicalPriceCents), note: "" }] : [{ label: "", price: "", note: "" }])
+      ? item.variants.map((v) => ({ label: v.label, price: money(v.priceCents), note: v.note ?? "", qty: v.qty != null ? String(v.qty) : "" }))
+      : (item.typicalPriceCents != null ? [{ label: "Regular", price: money(item.typicalPriceCents), note: "", qty: "" }] : [{ label: "", price: "", note: "", qty: "" }])
   );
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
   const inp: React.CSSProperties = { padding: "8px 10px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 13.5 };
 
+  // live preview of the average price per single unit (e.g. per rib)
+  const priced = rows.filter((r) => r.price.trim() !== "" && !isNaN(parseFloat(r.price)));
+  const withQty = priced.filter((r) => r.qty.trim() !== "" && parseFloat(r.qty) > 0);
+  const avgUnit = unit.trim() && withQty.length ? withQty.reduce((s, r) => s + parseFloat(r.price) / parseFloat(r.qty), 0) / withQty.length : null;
+
   function save() {
     const variants: Variant[] = rows
       .filter((r) => r.label.trim() && r.price.trim() !== "" && !isNaN(parseFloat(r.price)))
-      .map((r) => ({ label: r.label.trim(), priceCents: Math.round(parseFloat(r.price) * 100), note: r.note.trim() || null }));
+      .map((r) => ({ label: r.label.trim(), priceCents: Math.round(parseFloat(r.price) * 100), note: r.note.trim() || null, qty: r.qty.trim() !== "" && parseFloat(r.qty) > 0 ? parseFloat(r.qty) : null }));
     setBusy(true);
-    Promise.resolve(onSave(item.id, name, categoryId, variants)).finally(() => { setBusy(false); setDone(true); setTimeout(() => setDone(false), 1500); });
+    Promise.resolve(onSave(item.id, name, categoryId, unit, variants)).finally(() => { setBusy(false); setDone(true); setTimeout(() => setDone(false), 1500); });
   }
 
   return (
@@ -135,19 +141,31 @@ function ItemEditor({ item, categories, onSave, onDelete }: { item: Item; catego
         </select>
       </div>
 
-      <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", margin: "2px 0 6px" }}>Portions / sizes</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+        <span className="muted" style={{ fontSize: 12.5 }}>Priced by unit</span>
+        <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="rib, lb, link…" style={{ ...inp, width: 120 }} />
+        <span className="muted" style={{ fontSize: 11.5 }}>optional — enables a “per-{unit.trim() || "unit"}” average across portions</span>
+      </div>
+
+      <div className="muted" style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", margin: "2px 0 6px", display: "flex", justifyContent: "space-between" }}>
+        <span>Portions / sizes{unit.trim() ? ` · qty = # of ${unit.trim()}s` : ""}</span>
+        {avgUnit != null && <span style={{ color: "var(--accent-ink)" }}>≈ ${avgUnit % 1 === 0 ? avgUnit.toFixed(0) : avgUnit.toFixed(2)}/{unit.trim()} avg</span>}
+      </div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-          <input value={r.label} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} placeholder="Half rack" style={{ ...inp, flex: "1 1 100px" }} />
-          <div style={{ position: "relative", flex: "0 0 84px" }}>
+          <input value={r.label} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} placeholder="Half rack" style={{ ...inp, flex: "1 1 90px" }} />
+          <div style={{ position: "relative", flex: "0 0 76px" }}>
             <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", fontSize: 13 }}>$</span>
             <input value={r.price} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} placeholder="16" inputMode="decimal" style={{ ...inp, width: "100%", paddingLeft: 18 }} />
           </div>
-          <input value={r.note} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))} placeholder="note (optional)" style={{ ...inp, flex: "1 1 90px" }} />
+          {unit.trim() && (
+            <input value={r.qty} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} placeholder={`# ${unit.trim()}s`} inputMode="decimal" title={`How many ${unit.trim()}s in this portion`} style={{ ...inp, flex: "0 0 66px" }} />
+          )}
+          <input value={r.note} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))} placeholder="note" style={{ ...inp, flex: "1 1 70px" }} />
           <button onClick={() => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : rows)} title="Remove portion" style={{ border: 0, background: "var(--surface2)", borderRadius: 8, padding: "7px 11px", cursor: "pointer", color: "var(--bad)", fontWeight: 800 }}>×</button>
         </div>
       ))}
-      <button onClick={() => setRows([...rows, { label: "", price: "", note: "" }])} style={{ background: "none", border: 0, cursor: "pointer", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, marginTop: 2 }}>+ Add portion / size</button>
+      <button onClick={() => setRows([...rows, { label: "", price: "", note: "", qty: "" }])} style={{ background: "none", border: 0, cursor: "pointer", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13, marginTop: 2 }}>+ Add portion / size</button>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12 }}>
         <button className="cta" onClick={save} disabled={busy} style={{ padding: "9px 16px", opacity: busy ? 0.6 : 1 }}>{done ? "Saved ✓" : busy ? "Saving…" : "Save item"}</button>

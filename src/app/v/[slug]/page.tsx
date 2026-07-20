@@ -91,6 +91,8 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
           const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
           const prices = it.variants.length ? it.variants.map((v) => v.priceCents) : (it.typicalPriceCents != null ? [it.typicalPriceCents] : []);
           const lo = prices.length ? Math.min(...prices) : null, hi = prices.length ? Math.max(...prices) : null;
+          const wq = it.variants.filter((v) => v.qty != null && v.qty > 0);
+          const avgUnit = it.unit && wq.length ? Math.round(wq.reduce((s, v) => s + v.priceCents / (v.qty as number), 0) / wq.length) : null;
           return (
             <div className="item" key={it.id}>
               <div className="info">
@@ -104,7 +106,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
                   </div>
                 )}
               </div>
-              <div className="price tnum">{lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
+              <div className="price tnum">{avgUnit != null ? <>{money(avgUnit)}<span className="perunit">/{it.unit}</span></> : lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
               <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} />
             </div>
           );

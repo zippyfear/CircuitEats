@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 
-type Variant = { label: string; priceCents: number; note: string | null };
-type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null };
+type Variant = { label: string; priceCents: number; note: string | null; qty: number | null };
+type Row = { itemId: string; itemName: string; vendorName: string; vendorSlug: string; score: number; count: number; description: string | null; variants: Variant[]; priceFrom: number | null; priceTo: number | null; unit: string | null; avgUnitCents: number | null };
 type Pt = { day: string; avg: number };
 type Cat = { slug: string; name: string };
 const SCOPES: [string, string][] = [["day", "Today"], ["week", "This Week"], ["event", "This Event"], ["global", "Global"]];
 
 const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
 const range = (r: Row) => r.priceFrom == null ? "" : r.priceFrom === r.priceTo ? money(r.priceFrom) : `${money(r.priceFrom)}–${money(r.priceTo!)}`;
+// headline price: average per single unit (e.g. per rib) when the item is priced by unit, else the range
+const headline = (r: Row) => r.unit && r.avgUnitCents != null ? `${money(r.avgUnitCents)}/${r.unit}` : range(r);
+const subprice = (r: Row) => r.unit && r.avgUnitCents != null ? range(r) : "";
 
 function Graph({ series }: { series: Pt[] }) {
   if (series.length < 2) return <div className="muted" style={{ padding: "8px 2px", fontSize: 12 }}>Not enough history yet for a trend.</div>;
@@ -90,9 +93,9 @@ export default function CategoryView({ eventSlug, eventName, catSlug, cats, prev
             <div className="grow">
               <div className="crow-head">
                 <a className="v-name" href={`/v/${r.vendorSlug}`}>{r.vendorName}</a>
-                {range(r) && <span className="pricerange tnum">{range(r)}</span>}
+                {headline(r) && <span className="pricerange tnum">{headline(r)}{r.unit && r.avgUnitCents != null && <span className="avgtag"> avg</span>}</span>}
               </div>
-              <div className="v-sub">{r.itemName} · <span className="tnum">{r.count.toLocaleString()}</span> ratings</div>
+              <div className="v-sub">{r.itemName} · <span className="tnum">{r.count.toLocaleString()}</span> ratings{subprice(r) && <> · <span className="tnum">{subprice(r)}</span> range</>}</div>
               {r.variants.length > 0 && (
                 <div className="portions">
                   {r.variants.map((v) => <span className="portion" key={v.label} title={v.note ?? undefined}><b>{v.label}</b> <span className="tnum">{money(v.priceCents)}</span></span>)}

@@ -198,3 +198,6 @@ a{color:inherit;text-decoration:none}
 .menu-portions { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
 .menu-portion { font-size:12px; padding:3px 9px; border-radius:8px; background:var(--surface2); border:1px solid var(--line); color:var(--ink); white-space:nowrap; }
 .menu-portion b { font-weight:650; }
+/* ── v0.15.0 per-unit average price ── */
+.avgtag { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-left:3px; }
+.perunit { font-size:11px; font-weight:600; color:var(--muted); }
