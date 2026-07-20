@@ -1,4 +1,5 @@
 import Dashboard from "@/components/Dashboard";
+import AuthNav from "@/components/AuthNav";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default function Home() {
             <div className="sub">Live ratings across the food-festival circuit</div>
           </div>
         </div>
-        <span className="live">● live</span>
+        <AuthNav />
       </div>
 
       <Dashboard />

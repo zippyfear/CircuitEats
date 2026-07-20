@@ -1,13 +1,17 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 // Worth-the-Wait (§15 #1): crowd wait reports → rolling median → Appearance.currentWaitMin.
-async function guestUser() {
-  return db.user.upsert({
+async function currentUserId() {
+  const session = await auth();
+  if (session?.user?.id) return session.user.id;
+  const guest = await db.user.upsert({
     where: { email: "webguest@circuiteats.app" },
     update: {},
     create: { email: "webguest@circuiteats.app", displayName: "Web Guest", reviewerScore: 0.5 },
   });
+  return guest.id;
 }
 
 function median(ns: number[]): number | null {
@@ -28,8 +32,8 @@ export async function POST(req: Request) {
   if (!appearanceId || typeof waitMin !== "number" || waitMin < 0 || waitMin > 240) {
     return NextResponse.json({ error: "Provide appearanceId and waitMin (0–240)." }, { status: 400 });
   }
-  const user = await guestUser();
-  await db.waitReport.create({ data: { userId: user.id, appearanceId, waitMin } });
+  const userId = await currentUserId();
+  await db.waitReport.create({ data: { userId, appearanceId, waitMin } });
 
   const since = new Date(Date.now() - 30 * 60_000); // 30-min rolling window
   const recent = await db.waitReport.findMany({ where: { appearanceId, createdAt: { gte: since } }, select: { waitMin: true } });

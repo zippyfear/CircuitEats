@@ -1,13 +1,17 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
-// Phase 1: no auth yet → attribute to a shared "web guest" user.
-async function guestUser() {
-  return db.user.upsert({
+// Attribute to the signed-in user; fall back to a shared "web guest" when anonymous.
+async function currentUserId() {
+  const session = await auth();
+  if (session?.user?.id) return session.user.id;
+  const guest = await db.user.upsert({
     where: { email: "webguest@circuiteats.app" },
     update: {},
     create: { email: "webguest@circuiteats.app", displayName: "Web Guest", reviewerScore: 0.5 },
   });
+  return guest.id;
 }
 
 function weightedAvg(rows: { score: number; weight: number }[]) {
@@ -22,12 +26,12 @@ export async function POST(req: Request) {
   if (!itemId || !vendorId || typeof score !== "number" || score < 1 || score > 10) {
     return NextResponse.json({ error: "Provide itemId, vendorId, and a score 1–10." }, { status: 400 });
   }
-  const user = await guestUser();
+  const userId = await currentUserId();
 
   await db.rating.upsert({
-    where: { userId_itemId: { userId: user.id, itemId } },
+    where: { userId_itemId: { userId, itemId } },
     update: { score, weight: 1.5, verified: true },
-    create: { userId: user.id, itemId, vendorId, score, weight: 1.5, verified: true, tags: [] },
+    create: { userId, itemId, vendorId, score, weight: 1.5, verified: true, tags: [] },
   });
 
   const [itemRows, vendorRows] = await Promise.all([
