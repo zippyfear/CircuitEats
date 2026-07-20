@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "VendorStatus" AS ENUM ('ACTIVE', 'MERGED', 'HIDDEN');
 
@@ -15,6 +18,40 @@ CREATE TYPE "FollowTarget" AS ENUM ('VENDOR', 'EVENT');
 
 -- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('PLACED', 'PREPARING', 'READY', 'PICKED_UP', 'CANCELED');
+
+-- CreateEnum
+CREATE TYPE "ContainerKind" AS ENUM ('EVENT', 'RECURRING', 'VENUE');
+
+-- CreateEnum
+CREATE TYPE "MembershipScope" AS ENUM ('PLATFORM', 'EVENT', 'VENDOR');
+
+-- CreateEnum
+CREATE TYPE "MembershipRole" AS ENUM ('ADMIN', 'COORDINATOR', 'OWNER', 'EDITOR');
+
+-- CreateTable
+CREATE TABLE "EventType" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "vocab" JSONB NOT NULL,
+    "features" JSONB NOT NULL,
+    "theme" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EventType_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Membership" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "scope" "MembershipScope" NOT NULL,
+    "targetId" TEXT,
+    "role" "MembershipRole" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Membership_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "Category" (
@@ -49,6 +86,9 @@ CREATE TABLE "Vendor" (
     "homeBase" TEXT,
     "website" TEXT,
     "socials" JSONB,
+    "logoUrl" TEXT,
+    "customLinks" JSONB,
+    "theme" JSONB,
     "status" "VendorStatus" NOT NULL DEFAULT 'ACTIVE',
     "claimed" BOOLEAN NOT NULL DEFAULT false,
     "ownerUserId" TEXT,
@@ -94,6 +134,10 @@ CREATE TABLE "Event" (
     "status" "EventStatus" NOT NULL DEFAULT 'ACTIVE',
     "official" BOOLEAN NOT NULL DEFAULT false,
     "organizerUserId" TEXT,
+    "containerKind" "ContainerKind" NOT NULL DEFAULT 'EVENT',
+    "eventTypeId" TEXT,
+    "config" JSONB,
+    "subdomain" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -219,6 +263,18 @@ CREATE TABLE "UserBadge" (
 );
 
 -- CreateTable
+CREATE TABLE "Vote" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "vendorId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Vote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Order" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -243,6 +299,15 @@ CREATE TABLE "OrderItem" (
 
     CONSTRAINT "OrderItem_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EventType_key_key" ON "EventType"("key");
+
+-- CreateIndex
+CREATE INDEX "Membership_scope_targetId_idx" ON "Membership"("scope", "targetId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Membership_userId_scope_targetId_key" ON "Membership"("userId", "scope", "targetId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
@@ -273,6 +338,9 @@ CREATE INDEX "Item_categoryId_ratingAvg_idx" ON "Item"("categoryId", "ratingAvg"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Event_slug_key" ON "Event"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Event_subdomain_key" ON "Event"("subdomain");
 
 -- CreateIndex
 CREATE INDEX "Event_startDate_idx" ON "Event"("startDate");
@@ -329,7 +397,16 @@ CREATE UNIQUE INDEX "Badge_slug_key" ON "Badge"("slug");
 CREATE UNIQUE INDEX "UserBadge_userId_badgeId_key" ON "UserBadge"("userId", "badgeId");
 
 -- CreateIndex
+CREATE INDEX "Vote_eventId_categoryId_vendorId_idx" ON "Vote"("eventId", "categoryId", "vendorId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Vote_userId_eventId_categoryId_key" ON "Vote"("userId", "eventId", "categoryId");
+
+-- CreateIndex
 CREATE INDEX "Order_appearanceId_status_idx" ON "Order"("appearanceId", "status");
+
+-- AddForeignKey
+ALTER TABLE "Membership" ADD CONSTRAINT "Membership_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Vendor" ADD CONSTRAINT "Vendor_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -342,6 +419,9 @@ ALTER TABLE "Item" ADD CONSTRAINT "Item_vendorId_fkey" FOREIGN KEY ("vendorId") 
 
 -- AddForeignKey
 ALTER TABLE "Item" ADD CONSTRAINT "Item_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_eventTypeId_fkey" FOREIGN KEY ("eventTypeId") REFERENCES "EventType"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Appearance" ADD CONSTRAINT "Appearance_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -404,6 +484,18 @@ ALTER TABLE "UserBadge" ADD CONSTRAINT "UserBadge_userId_fkey" FOREIGN KEY ("use
 ALTER TABLE "UserBadge" ADD CONSTRAINT "UserBadge_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "Badge"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Vote" ADD CONSTRAINT "Vote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Vote" ADD CONSTRAINT "Vote_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Vote" ADD CONSTRAINT "Vote_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Vote" ADD CONSTRAINT "Vote_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -411,3 +503,9 @@ ALTER TABLE "Order" ADD CONSTRAINT "Order_appearanceId_fkey" FOREIGN KEY ("appea
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- Raw constraints (MASTER_PLAN §16) — not expressible in Prisma schema
+ALTER TABLE "Rating" ADD CONSTRAINT rating_score_range CHECK (score BETWEEN 1 AND 10);
+ALTER TABLE "User"   ADD CONSTRAINT reviewer_score_range CHECK ("reviewerScore" BETWEEN 0 AND 1);
+CREATE UNIQUE INDEX rating_user_vendor_null_item ON "Rating"("userId","vendorId") WHERE "itemId" IS NULL;
