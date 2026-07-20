@@ -99,6 +99,14 @@ a{color:inherit;text-decoration:none}
 .wait-report button:hover{border-color:var(--accent)}
 .wait-report button:disabled{opacity:.5;cursor:default}
 
+/* people's choice voting */
+.voterow{position:relative;display:flex;align-items:center;width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;overflow:hidden;font:inherit;color:var(--ink);text-align:left}
+.voterow.mine{border-color:var(--accent)}
+.voterow .vbar{position:absolute;left:0;top:0;bottom:0;background:var(--accent-soft);z-index:0;transition:width .4s}
+.voterow.mine .vbar{background:color-mix(in srgb,var(--accent) 24%,transparent)}
+.voterow .vname{position:relative;z-index:1;font-weight:700;font-size:13.5px}
+.voterow .vpct{position:relative;z-index:1;margin-left:auto;font-weight:800;font-size:12.5px;color:var(--ink2)}
+
 /* follows */
 .vactions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 .followbtn{border:1px solid var(--line);background:var(--surface2);color:var(--ink);font:inherit;font-weight:800;font-size:13px;padding:8px 13px;border-radius:999px;cursor:pointer;display:inline-block}

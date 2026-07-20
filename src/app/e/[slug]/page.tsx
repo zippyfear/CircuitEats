@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { resolveEventConfig } from "@/lib/config";
 import { currentUser, isEventCoordinator } from "@/lib/roles";
 import EventClaimButton from "@/components/EventClaimButton";
+import PeoplesChoice from "@/components/PeoplesChoice";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,28 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const canClaim = !!me && !event.organizerUserId;
   const theme = (cfg.theme ?? {}) as { accent?: string; bannerUrl?: string; logoUrl?: string };
   const board = event.appearances.map((a) => a.vendor).sort((x, y) => y.ratingAvg - x.ratingAvg);
+
+  // People's Choice data (§15 #6): categories with ≥2 candidate vendors at this event + live tallies.
+  type VCat = { categoryId: string; name: string; myVendorId: string | null; candidates: { vendorId: string; name: string; votes: number }[] };
+  let voting: VCat[] = [];
+  if (cfg.features.voting) {
+    const apps = await db.appearance.findMany({ where: { eventId: event.id }, include: { vendor: { include: { items: { include: { category: true } } } } } });
+    const catMap = new Map<string, { id: string; name: string; sortOrder: number; vendors: Map<string, string> }>();
+    for (const a of apps) for (const it of a.vendor.items) {
+      const c = it.category; if (!c) continue;
+      if (!catMap.has(c.id)) catMap.set(c.id, { id: c.id, name: c.name, sortOrder: c.sortOrder, vendors: new Map() });
+      catMap.get(c.id)!.vendors.set(a.vendor.id, a.vendor.name);
+    }
+    const tallies = await db.vote.groupBy({ by: ["categoryId", "vendorId"], where: { eventId: event.id }, _count: { _all: true } });
+    const tallyMap = new Map<string, number>();
+    for (const t of tallies) tallyMap.set(`${t.categoryId}|${t.vendorId}`, t._count._all);
+    const myVotes = me ? await db.vote.findMany({ where: { userId: me.id, eventId: event.id }, select: { categoryId: true, vendorId: true } }) : [];
+    const myMap = new Map(myVotes.map((v) => [v.categoryId, v.vendorId]));
+    voting = Array.from(catMap.values()).filter((c) => c.vendors.size >= 2).sort((a, b) => a.sortOrder - b.sortOrder).map((c) => ({
+      categoryId: c.id, name: c.name, myVendorId: myMap.get(c.id) ?? null,
+      candidates: Array.from(c.vendors.entries()).map(([vid, name]) => ({ vendorId: vid, name, votes: tallyMap.get(`${c.id}|${vid}`) ?? 0 })).sort((a, b) => b.votes - a.votes),
+    }));
+  }
 
   return (
     <main className="wrap">
@@ -43,6 +66,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </a>
         ))}
       </div>
+
+      {cfg.features.voting && voting.length > 0 && <PeoplesChoice eventId={event.id} data={voting} authed={!!me} />}
     </main>
   );
 }

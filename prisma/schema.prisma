@@ -121,6 +121,7 @@ model Category {
   slug      String   @unique
   sortOrder Int      @default(0)
   items     Item[]
+  votes     Vote[]
   createdAt DateTime @default(now())
 }
 // SEED categories: Ribs, Brisket, Pulled Pork, Chicken, Burnt Ends, Sausage,
@@ -143,6 +144,7 @@ model User {
   waitReports   WaitReport[]
   badges        UserBadge[]
   memberships   Membership[]                  // roles: platform/event/vendor (§20.4)
+  votes         Vote[]                        // People's Choice (§15 #6)
   claimedVendor Vendor?        @relation("VendorOwner")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -178,6 +180,7 @@ model Vendor {
   ratings      Rating[]
   follows      Follow[]
   photos       Photo[]
+  votes        Vote[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -233,6 +236,7 @@ model Event {
   ratings         Rating[]
   photos          Photo[]
   checkIns        CheckIn[]
+  votes           Vote[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -385,6 +389,23 @@ model UserBadge {
   earnedAt  DateTime @default(now())
 
   @@unique([userId, badgeId])
+}
+
+// ─────────────────────────── Vote (People's Choice §15 #6 — per-category, one per user/event) ───────────────────────────
+model Vote {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  vendorId   String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, eventId, categoryId])          // one vote per user per category per event
+  @@index([eventId, categoryId, vendorId])
 }
 
 // ─────────────────────────── Order / OrderItem (Phase-2 — ordering + ready-notify) ───────────────────────────
