@@ -1,0 +1,360 @@
+// CircuitEats — Prisma schema (v1 refined, 2026-07-19)
+// Maps to MASTER_PLAN.md §4 entity model. Postgres. Vendor-centric.
+//
+// KEY DESIGN DECISIONS (v1):
+//  - Vendor is the durable node; ratings aggregate to it globally across events.
+//  - Vendor.mergedIntoId + status handle the dedup/merge problem (§4 #1).
+//  - Integrity (§4 #2 / §6): Rating.weight is COMPUTED = f(verified presence, reviewer trust).
+//      * CheckIn (geofence) + Order back the "verified" signal.
+//      * User.reviewerScore (0–1) further scales weight.
+//  - Money is ALWAYS integer cents (no floats/Decimal) — avoids rounding bugs.
+//  - Leaderboards ("best ribs on the circuit") are served from cached ratingAvg/ratingCount
+//    on Item/Vendor, recomputed on rating write, backed by composite indexes below.
+//  - Geo proximity (follow alerts, "near me") uses lat/lng + geohash prefix indexing;
+//    upgrade to PostGIS later if radius queries get heavy.
+//
+// CONSTRAINTS TO ADD IN RAW MIGRATION SQL (Prisma can't express these):
+//  1. CHECK (score BETWEEN 1 AND 10) on Rating.
+//  2. Partial unique for vendor-level ratings (itemId IS NULL):
+//       CREATE UNIQUE INDEX rating_user_vendor_null_item
+//       ON "Rating"("userId","vendorId") WHERE "itemId" IS NULL;
+//     (The @@unique([userId,itemId]) below covers item-level; Postgres treats NULLs as
+//      distinct, so vendor-level dedup needs this partial index.)
+//  3. CHECK (reviewerScore BETWEEN 0 AND 1) on User.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+enum VendorStatus {
+  ACTIVE
+  MERGED   // folded into another via mergedIntoId
+  HIDDEN   // spam / removed by moderation
+}
+
+enum EventStatus {
+  ACTIVE
+  HIDDEN
+}
+
+enum ContributionStatus {
+  APPLIED
+  PENDING
+  REVERTED
+}
+
+enum EntityType {
+  VENDOR
+  EVENT
+  ITEM
+  APPEARANCE
+}
+
+enum FollowTarget {
+  VENDOR
+  EVENT
+}
+
+enum OrderStatus {
+  PLACED
+  PREPARING
+  READY
+  PICKED_UP
+  CANCELED
+}
+
+// ─────────────────────────── Core taxonomy ───────────────────────────
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique          // "Ribs", "Brisket", "Mac & Cheese", "Sauce"...
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  items     Item[]
+  createdAt DateTime @default(now())
+}
+// SEED categories: Ribs, Brisket, Pulled Pork, Chicken, Burnt Ends, Sausage,
+//   Mac & Cheese, Beans, Slaw, Cornbread, Sides, Sauce, Dessert, Drinks, Other.
+//   (→ see seed.ts, to be written.)
+
+// ─────────────────────────── Users ───────────────────────────
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  displayName   String?
+  avatarUrl     String?
+  reviewerScore Float          @default(0.5)  // 0–1 trust; scales rating weight (§15 #8)
+  ratings       Rating[]
+  follows       Follow[]
+  contributions Contribution[]
+  photos        Photo[]
+  orders        Order[]
+  checkIns      CheckIn[]
+  waitReports   WaitReport[]
+  badges        UserBadge[]
+  claimedVendor Vendor?        @relation("VendorOwner")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ─────────────────────────── Vendor (the durable node) ───────────────────────────
+model Vendor {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  bio          String?
+  homeBase     String?                    // "Kansas City, MO"
+  website      String?
+  socials      Json?                       // { instagram, facebook, tiktok, ... }
+  status       VendorStatus @default(ACTIVE)
+  // claiming / verification (§7)
+  claimed      Boolean      @default(false)
+  ownerUserId  String?      @unique
+  owner        User?        @relation("VendorOwner", fields: [ownerUserId], references: [id])
+  // dedup/merge (§4 #1): non-null → duplicate folded into canonical vendor
+  mergedIntoId String?
+  mergedInto   Vendor?      @relation("VendorMerge", fields: [mergedIntoId], references: [id])
+  duplicates   Vendor[]     @relation("VendorMerge")
+  // cached GLOBAL aggregates (recomputed on rating write) — powers leaderboards
+  ratingAvg    Float        @default(0)
+  ratingCount  Int          @default(0)
+
+  items        Item[]
+  appearances  Appearance[]
+  ratings      Rating[]
+  follows      Follow[]
+  photos       Photo[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([mergedIntoId])
+  @@index([status, ratingAvg])            // "top vendors on the circuit"
+}
+
+// ─────────────────────────── Item / Dish (rated globally, persists across events) ───────────────────────────
+model Item {
+  id           String    @id @default(cuid())
+  vendorId     String
+  vendor       Vendor    @relation(fields: [vendorId], references: [id])
+  name         String                     // "Baby Back Ribs", "Burnt Ends"
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  description  String?
+  typicalPriceCents Int?                   // money = cents
+  dietaryTags  String[]                    // ["GF","spicy","veg"] (§15 #9)
+  ratingAvg    Float     @default(0)
+  ratingCount  Int       @default(0)
+  ratings      Rating[]
+  photos       Photo[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([vendorId])
+  @@index([categoryId, ratingAvg])         // "best RIBS on the circuit" leaderboard
+}
+
+// ─────────────────────────── Event (time+place container) ───────────────────────────
+model Event {
+  id              String       @id @default(cuid())
+  name            String
+  slug            String       @unique
+  venue           String?
+  lat             Float?
+  lng             Float?
+  geohash         String?                   // proximity prefix index (§15 #2 "near me")
+  startDate       DateTime
+  endDate         DateTime
+  website         String?
+  description      String?
+  status          EventStatus  @default(ACTIVE)
+  official        Boolean      @default(false)  // organizer-claimed vs crowd-created
+  organizerUserId String?
+  appearances     Appearance[]
+  ratings         Rating[]
+  photos          Photo[]
+  checkIns        CheckIn[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([startDate])
+  @@index([geohash])
+  @@index([status, startDate])
+}
+
+// ─────────────────────────── Appearance (Vendor × Event — where ordering/wait live) ───────────────────────────
+model Appearance {
+  id             String       @id @default(cuid())
+  vendorId       String
+  vendor         Vendor       @relation(fields: [vendorId], references: [id])
+  eventId        String
+  event          Event        @relation(fields: [eventId], references: [id])
+  qrSlug         String       @unique       // encoded in the booth QR (§18.H) → /a/{qrSlug}
+  boothLabel     String?                    // "Booth 12", "SW corner"
+  boothLat       Float?
+  boothLng       Float?
+  menuJson       Json?                       // this-event snapshot: [{ itemId, name, priceCents }]
+  hours          Json?
+  // live wait (§15 #1) — cached from WaitReport rolling median
+  currentWaitMin Int?
+  waitUpdatedAt  DateTime?
+  waitReports    WaitReport[]
+  orders         Order[]
+  checkIns       CheckIn[]
+  createdAt      DateTime     @default(now())
+
+  @@unique([vendorId, eventId])
+  @@index([eventId])
+}
+
+// ─────────────────────────── Rating / Review (global; item- or vendor-level) ───────────────────────────
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  vendorId  String                          // always known
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  itemId    String?                          // null = vendor-level; set = item-level
+  item      Item?    @relation(fields: [itemId], references: [id])
+  eventId   String?                          // context where tasted
+  event     Event?   @relation(fields: [eventId], references: [id])
+  score     Int                              // 1–10 (CHECK constraint in migration)
+  tags      String[]                         // ["worth-the-wait","skip","great-bark"]
+  note      String?
+  // integrity (§4 #2 / §6): weight = f(verified, reviewerScore)
+  verified  Boolean  @default(false)         // backed by a matching CheckIn or Order
+  weight    Float    @default(1.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, itemId])                 // item-level dedup; vendor-level via partial index (see header)
+  @@index([vendorId])
+  @@index([itemId, score])
+}
+
+// ─────────────────────────── CheckIn (geofence verification §6) ───────────────────────────
+model CheckIn {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  eventId      String
+  event        Event       @relation(fields: [eventId], references: [id])
+  appearanceId String?
+  appearance   Appearance? @relation(fields: [appearanceId], references: [id])
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime    @default(now())
+
+  @@index([userId, eventId])
+}
+
+// ─────────────────────────── WaitReport (crowd wait times → Worth-the-Wait §15 #1) ───────────────────────────
+model WaitReport {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  appearanceId String
+  appearance   Appearance @relation(fields: [appearanceId], references: [id])
+  waitMin      Int
+  createdAt    DateTime   @default(now())
+
+  @@index([appearanceId, createdAt])         // rolling median window
+}
+
+// ─────────────────────────── Follow (retention / proximity alerts §15 #2) ───────────────────────────
+model Follow {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  targetType FollowTarget
+  vendorId   String?
+  vendor     Vendor?      @relation(fields: [vendorId], references: [id])
+  eventId    String?
+  createdAt  DateTime     @default(now())
+
+  @@unique([userId, targetType, vendorId, eventId])
+  @@index([vendorId])
+}
+
+// ─────────────────────────── Photo (user-contributed; nullable-FK polymorphism §15 #9) ───────────────────────────
+model Photo {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  url       String
+  vendorId  String?
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id])
+  itemId    String?
+  item      Item?    @relation(fields: [itemId], references: [id])
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([itemId])
+  @@index([vendorId])
+}
+
+// ─────────────────────────── Contribution (wiki edit log + moderation §5) ───────────────────────────
+model Contribution {
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id])
+  entityType EntityType
+  entityId   String
+  diff       Json                            // proposed/applied change
+  status     ContributionStatus @default(APPLIED)
+  createdAt  DateTime           @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// ─────────────────────────── Gamification (passport / badges §15 #8) ───────────────────────────
+model Badge {
+  id          String      @id @default(cuid())
+  slug        String      @unique          // "tried-all-pro-teams", "10-events"
+  name        String
+  description String?
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+// ─────────────────────────── Order / OrderItem (Phase-2 — ordering + ready-notify) ───────────────────────────
+model Order {
+  id                  String      @id @default(cuid())
+  userId              String
+  user                User        @relation(fields: [userId], references: [id])
+  appearanceId        String
+  appearance          Appearance  @relation(fields: [appearanceId], references: [id])
+  status              OrderStatus @default(PLACED)
+  totalCents          Int
+  stripePaymentIntent String?
+  items               OrderItem[]
+  createdAt           DateTime    @default(now())
+  readyAt             DateTime?
+
+  @@index([appearanceId, status])
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  orderId    String
+  order      Order  @relation(fields: [orderId], references: [id])
+  itemId     String
+  nameSnap   String                          // name at time of order
+  priceCents Int
+  qty        Int    @default(1)
+}
