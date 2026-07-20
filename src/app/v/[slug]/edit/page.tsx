@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function EditVendor({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await currentUser();
-  const vendor = await db.vendor.findUnique({ where: { slug }, include: { items: { orderBy: { name: "asc" } }, photos: { orderBy: { createdAt: "desc" }, take: 12 } } });
+  const vendor = await db.vendor.findUnique({ where: { slug }, include: { items: { orderBy: { name: "asc" }, include: { variants: { orderBy: { sortOrder: "asc" } } } }, photos: { orderBy: { createdAt: "desc" }, take: 12 } } });
   if (!vendor) notFound();
   if (!user || !(await isVendorOwner(user.id, vendor.id))) redirect(`/v/${slug}`);
   const categories = await db.category.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } });
