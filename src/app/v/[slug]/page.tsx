@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import RateWidget from "@/components/RateWidget";
+import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,8 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
   const appearance = vendor.appearances[0];
   const worst = vendor.ratingAvg < 5;
+  // Config-driven vocabulary + feature-flags (§20) — resolved from this event's preset + overrides.
+  const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
 
   return (
     <main className="wrap">
@@ -48,7 +51,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
         </div>
       </div>
 
-      <div className="eyebrow">Menu · tap ★ to rate</div>
+      <div className="eyebrow">{cfg.vocab.offeringPlural} · tap ★ to rate{cfg.features.ordering ? " · order ahead available" : ""}</div>
       <div className="card">
         {vendor.items.map((it) => (
           <div className="item" key={it.id}>

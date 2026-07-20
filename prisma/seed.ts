@@ -58,16 +58,34 @@ async function main() {
     create: { email: "seed@circuiteats.app", displayName: "Seed Reviewer", reviewerScore: 0.8 },
   });
 
-  // Event: Elkhorn Ribfest 2026
+  // EventType preset: FESTIVAL (§20.2 — vocab + feature defaults for the launch vertical)
+  const festival = await db.eventType.upsert({
+    where: { key: "FESTIVAL" },
+    update: {},
+    create: {
+      key: "FESTIVAL", name: "Food Festival",
+      vocab: { container: "Festival", containerPlural: "Festivals", participant: "Vendor", participantPlural: "Vendors", offering: "Dish", offeringPlural: "Dishes" },
+      features: { rating: true, voting: true, ordering: false, waitTimes: true, ticketing: false, schedule: true },
+      theme: { accent: "#DE7127" },
+    },
+  });
+
+  // Event: Elkhorn Ribfest 2026 (attached to FESTIVAL preset + a coordinator config override)
+  const eventCfg = {
+    eventTypeId: festival.id,
+    containerKind: "EVENT" as const,
+    config: { features: { ordering: false }, theme: { accent: "#DE7127" } },
+  };
   const event = await db.event.upsert({
     where: { slug: "elkhorn-ribfest-2026" },
-    update: {},
+    update: eventCfg,
     create: {
       name: "Elkhorn Ribfest 2026", slug: "elkhorn-ribfest-2026",
       venue: "Walworth County Fairgrounds, Elkhorn, WI",
       lat: 42.6828, lng: -88.5443,
       startDate: new Date("2026-07-15"), endDate: new Date("2026-07-19"),
       status: EventStatus.ACTIVE, official: false,
+      ...eventCfg,
     },
   });
 

@@ -69,6 +69,51 @@ enum OrderStatus {
   CANCELED
 }
 
+// ── Platform / multi-tenancy (§20) ──
+enum ContainerKind {
+  EVENT      // time-boxed
+  RECURRING  // repeats (weekly market)
+  VENUE      // permanent (stadium, food hall, mall)
+}
+enum MembershipScope {
+  PLATFORM
+  EVENT
+  VENDOR
+}
+enum MembershipRole {
+  ADMIN
+  COORDINATOR
+  OWNER
+  EDITOR
+}
+
+// ─────────────────────────── EventType (vertical preset §20.2) ───────────────────────────
+// A preset = default vocabulary + default feature-flags + default theme for a vertical.
+model EventType {
+  id        String   @id @default(cuid())
+  key       String   @unique   // "FESTIVAL", "FARMERS_MARKET", "EXPO", "FOOD_HALL", "CONFERENCE"...
+  name      String
+  vocab     Json                // { container, participant, offering } (+ plurals)
+  features  Json                // { rating, voting, ordering, waitTimes, ticketing, schedule }
+  theme     Json?               // default theme (logo/banner/colors/fonts)
+  events    Event[]
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────── Membership (roles §20.4) ───────────────────────────
+model Membership {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  scope     MembershipScope
+  targetId  String?                              // eventId | vendorId (null for PLATFORM)
+  role      MembershipRole
+  createdAt DateTime        @default(now())
+
+  @@unique([userId, scope, targetId])
+  @@index([scope, targetId])
+}
+
 // ─────────────────────────── Core taxonomy ───────────────────────────
 model Category {
   id        String   @id @default(cuid())
@@ -97,6 +142,7 @@ model User {
   checkIns      CheckIn[]
   waitReports   WaitReport[]
   badges        UserBadge[]
+  memberships   Membership[]                  // roles: platform/event/vendor (§20.4)
   claimedVendor Vendor?        @relation("VendorOwner")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -111,6 +157,9 @@ model Vendor {
   homeBase     String?                    // "Kansas City, MO"
   website      String?
   socials      Json?                       // { instagram, facebook, tiktok, ... }
+  logoUrl      String?                      // vendor self-customization (§20.3-B)
+  customLinks  Json?                        // [{label,url,type}] — CTAs: "order on our site", "book us"
+  theme        Json?                        // optional per-vendor accent overrides
   status       VendorStatus @default(ACTIVE)
   // claiming / verification (§7)
   claimed      Boolean      @default(false)
@@ -174,6 +223,12 @@ model Event {
   status          EventStatus  @default(ACTIVE)
   official        Boolean      @default(false)  // organizer-claimed vs crowd-created
   organizerUserId String?
+  // ── platform / multi-tenancy (§20) ──
+  containerKind   ContainerKind @default(EVENT)  // time-boxed / recurring / permanent VENUE
+  eventTypeId     String?                        // vertical preset (§20.2)
+  eventType       EventType?    @relation(fields: [eventTypeId], references: [id])
+  config          Json?                          // coordinator overrides: { theme, features, vocab, nav, infoPages }
+  subdomain       String?       @unique          // white-label entry (§20.6)
   appearances     Appearance[]
   ratings         Rating[]
   photos          Photo[]
