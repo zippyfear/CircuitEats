@@ -99,6 +99,12 @@ a{color:inherit;text-decoration:none}
 .wait-report button:hover{border-color:var(--accent)}
 .wait-report button:disabled{opacity:.5;cursor:default}
 
+/* follows */
+.vactions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.followbtn{border:1px solid var(--line);background:var(--surface2);color:var(--ink);font:inherit;font-weight:800;font-size:13px;padding:8px 13px;border-radius:999px;cursor:pointer;display:inline-block}
+.followbtn.on{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+.followbtn:disabled{opacity:.6}
+
 /* event hero (coordinator branding) */
 .ehero{border-radius:18px;height:160px;position:relative;overflow:hidden;color:#fff;display:flex;align-items:flex-end;padding:16px;margin-bottom:6px}
 .ehero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.4))}

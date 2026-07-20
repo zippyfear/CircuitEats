@@ -5,6 +5,7 @@ import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 import WaitWidget from "@/components/WaitWidget";
 import { currentUser } from "@/lib/roles";
 import ClaimButton from "@/components/ClaimButton";
+import FollowButton from "@/components/FollowButton";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,8 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const isOwner = !!me && vendor.ownerUserId === me.id;
   const canClaim = !!me && !vendor.claimed;
   const links = Array.isArray(vendor.customLinks) ? (vendor.customLinks as { label: string; url: string }[]) : [];
+  const following = !!me && !!(await db.follow.findFirst({ where: { userId: me.id, targetType: "VENDOR", vendorId: vendor.id } }));
+  const followCount = await db.follow.count({ where: { targetType: "VENDOR", vendorId: vendor.id } });
 
   return (
     <main className="wrap">
@@ -60,8 +63,11 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
         </div>
       </div>
 
-      {isOwner && <a className="editlink" href={`/v/${vendor.slug}/edit`}>✎ Edit your vendor page</a>}
-      {canClaim && <ClaimButton vendorId={vendor.id} />}
+      <div className="vactions">
+        <FollowButton vendorId={vendor.id} initialFollowing={following} initialCount={followCount} authed={authed} />
+        {isOwner && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/edit`}>✎ Edit</a>}
+        {canClaim && <ClaimButton vendorId={vendor.id} />}
+      </div>
       {links.length > 0 && (
         <div className="vlinks">
           {links.map((l, i) => <a key={i} className="vlink" href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>)}
