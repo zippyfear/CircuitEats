@@ -424,3 +424,21 @@ a{color:inherit;text-decoration:none}
 .sh-auth { display:flex; align-items:center; }
 /* /family already has its own section subnav — tuck it under the global header */
 .circnav { top:46px !important; z-index:30 !important; }
+/* ── #3 search + /vendors directory ── */
+.sh-search { flex:0 0 auto; }
+.sh-search input { width:150px; max-width:32vw; font-size:13px; padding:6px 11px; border-radius:999px; border:1px solid var(--line); background:var(--surface2,#fff); color:var(--ink); outline:none; }
+.sh-search input:focus { border-color:var(--accent); }
+
+.vsearch { display:flex; gap:8px; margin:0 0 14px; }
+.vsearch input { flex:1; font-size:14px; padding:9px 13px; border-radius:10px; border:1px solid var(--line); background:var(--surface2,#fff); color:var(--ink); outline:none; }
+.vsearch input:focus { border-color:var(--accent); }
+.vsearch button { font-size:13px; font-weight:700; padding:9px 15px; border-radius:10px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+.vsearch button:hover { background:var(--accent-ink); }
+
+.vfilter { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+.vfilter-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.vfilter-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-right:4px; min-width:42px; }
+.fchip { font-size:12.5px; font-weight:600; color:var(--muted); text-decoration:none; padding:5px 11px; border-radius:999px; border:1px solid var(--line); white-space:nowrap; }
+.fchip:hover { color:var(--accent-ink); border-color:var(--accent); }
+.fchip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+.ontour-mini { color:var(--gold); font-size:12px; }

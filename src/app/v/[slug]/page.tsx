@@ -72,7 +72,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   return (
     <main className="wrap">
       {!isOwner && !isAdmin && <ViewBeacon vendorId={vendor.id} />}
-      <a className="back" href="/">‹ All vendors</a>
+      <a className="back" href="/vendors">‹ All vendors</a>
       <div className="vhero">
         {vendor.logoUrl && <img src={vendor.logoUrl} alt="" className="vlogo" />}
         {onTour && <span className="ontour">◎ On tour</span>}
