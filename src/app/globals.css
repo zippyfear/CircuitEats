@@ -404,3 +404,11 @@ a{color:inherit;text-decoration:none}
 .einfo a { color:var(--accent-ink); text-decoration:none; font-weight:700; }
 .einfo a:hover { text-decoration:underline; }
 .edesc { font-size:14px; line-height:1.65; color:var(--ink2,var(--ink)); max-width:680px; margin:8px 0 0; }
+/* ── #1 "On the circuit" section (vendor page appearance list) ── */
+.circuit-row { display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line,#efe9df); text-decoration:none; color:inherit; transition:background .12s; }
+.circuit-row:last-child { border-bottom:none; }
+.circuit-row:hover { background:var(--hover,#faf6ef); }
+.circuit-row .grow { flex:1; min-width:0; }
+.circuit-row .nm { font-weight:700; }
+.circuit-row .mt { font-size:12.5px; color:var(--muted,#8a8a8a); margin-top:2px; }
+.circuit-score { font-weight:800; white-space:nowrap; font-size:15px; }

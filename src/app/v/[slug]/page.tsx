@@ -11,20 +11,37 @@ import PhotoControls from "@/components/PhotoControls";
 
 export const dynamic = "force-dynamic";
 
+function fmtRange(a: Date, b: Date) {
+  const o: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const s = a.toLocaleDateString("en-US", o), e = b.toLocaleDateString("en-US", o);
+  return `${s === e ? s : `${s} – ${e}`}, ${b.getFullYear()}`;
+}
+
 export default async function VendorPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const vendor = await db.vendor.findUnique({
     where: { slug },
     include: {
       items: { orderBy: { ratingAvg: "desc" }, include: { category: true, variants: { orderBy: { sortOrder: "asc" } } } },
-      appearances: { include: { event: true }, take: 1 },
+      // ALL appearances, most-recent first — powers the "On the circuit" section (the reputation-travels moat).
+      appearances: { include: { event: true }, orderBy: { event: { startDate: "desc" } } },
       photos: { where: { status: "VISIBLE" }, orderBy: { createdAt: "desc" }, take: 8 },
     },
   });
   if (!vendor) notFound();
 
-  const appearance = vendor.appearances[0];
+  const apps = vendor.appearances;          // all events this vendor has worked, newest first
+  const appearance = apps[0];               // most-recent = the "current" context for hero/config
+  const onTour = apps.length > 1;           // reputation travels: 2+ events = on tour (was: ratingCount>15000)
   const worst = vendor.ratingAvg < 5;
+
+  // per-event reputation rollup: this vendor's avg score + count at each event they've worked
+  const eventIds = apps.map((a) => a.eventId);
+  const perEvent = eventIds.length
+    ? await db.rating.groupBy({ by: ["eventId"], where: { vendorId: vendor.id, eventId: { in: eventIds } }, _avg: { score: true }, _count: { _all: true } })
+    : [];
+  const evStat = new Map(perEvent.map((p) => [p.eventId as string, { avg: p._avg.score, count: p._count._all }]));
+
   // Config-driven vocabulary + feature-flags (§20) — resolved from this event's preset + overrides.
   const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
   const me = await currentUser(); // view is open; rating/wait actions gated on sign-in
@@ -58,7 +75,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
       <a className="back" href="/">‹ All vendors</a>
       <div className="vhero">
         {vendor.logoUrl && <img src={vendor.logoUrl} alt="" className="vlogo" />}
-        {vendor.ratingCount > 15000 && <span className="ontour">◎ On tour</span>}
+        {onTour && <span className="ontour">◎ On tour</span>}
         <div>
           <h1>{vendor.name}</h1>
           <div className="ev">
@@ -79,8 +96,8 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
           <div className="n tnum">{vendor.ratingCount.toLocaleString()}</div>
         </div>
         <div className="vstat">
-          <div className="l">Home base</div>
-          <div className="n" style={{ fontSize: 15 }}>{vendor.homeBase ?? "—"}</div>
+          <div className="l">{onTour ? "Events" : "Home base"}</div>
+          <div className="n" style={{ fontSize: onTour ? undefined : 15 }}>{onTour ? <span className="tnum">{apps.length}</span> : (vendor.homeBase ?? "—")}</div>
         </div>
       </div>
 
@@ -97,6 +114,34 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
         <div className="vlinks">
           {links.map((l, i) => <a key={i} className="vlink" href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>)}
         </div>
+      )}
+
+      {apps.length > 0 && (
+        <>
+          <div className="eyebrow">On the circuit · {apps.length} {apps.length === 1 ? "event" : "events"}</div>
+          <div className="card">
+            {apps.map((a) => {
+              const st = evStat.get(a.eventId);
+              return (
+                <a className="circuit-row" key={a.id} href={`/e/${a.event.slug}`}>
+                  <div className="grow">
+                    <div className="nm">{a.event.name}</div>
+                    <div className="mt">
+                      {fmtRange(a.event.startDate, a.event.endDate)}
+                      {a.event.city ? ` · ${a.event.city}${a.event.region ? `, ${a.event.region}` : ""}` : ""}
+                      {a.boothLabel ? ` · ${a.boothLabel}` : ""}
+                    </div>
+                  </div>
+                  <div className="circuit-score tnum">
+                    {st && st.avg != null
+                      ? <>★ {st.avg.toFixed(1)} <span className="muted" style={{ fontSize: 12 }}>· {st.count}</span></>
+                      : <span className="muted" style={{ fontSize: 12 }}>no ratings yet</span>}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {vendor.photos.length > 0 && (
@@ -122,7 +167,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
               <div className="info">
                 <div className="nm">{it.name}</div>
                 <div className="mt">
-                  <span className="s">★ {it.ratingAvg.toFixed(1)}</span> · {it.category?.name ?? "Other"} · {it.ratingCount.toLocaleString()} ratings
+                  <span className="s">★ {it.ratingAvg.toFixed(1)}</span> · {it.category?.name ?? "Other"} · {it.ratingCount.toLocaleString()} {it.ratingCount === 1 ? "rating" : "ratings"}
                 </div>
                 {it.variants.length > 0 && (
                   <div className="menu-portions">
