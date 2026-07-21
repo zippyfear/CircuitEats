@@ -528,3 +528,21 @@ enum CheckInMethod {
   GEO
   QR
 }
+
+// ── Circuit family registry: the platform + every vertical, each with a
+//    modified version of the central "Best [what], best [place]" tagline. ──
+model Vertical {
+  id         String   @id @default(cuid())
+  key        String   @unique          // "circuit" (platform) | "eats" | "market" | ...
+  brandName  String                     // "CircuitEats"
+  tagline    String                     // "Best food, best festivals."
+  whatWord   String                     // "food"    — fills the central pattern
+  placeWord  String                     // "festivals"
+  blurb      String                     // what kinds of events it covers
+  accent     String                     // hex brand accent
+  emoji      String
+  isPlatform Boolean  @default(false)    // true for the umbrella "Circuit"
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+}

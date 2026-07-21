@@ -62,7 +62,7 @@ export default async function Home() {
         ))}
       </div>
 
-      <div className="foot">CircuitEats · reputation follows the vendor across every event</div>
+      <div className="foot">CircuitEats · reputation follows the vendor across every event · <a href="/family" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>part of the Circuit family →</a></div>
     </main>
   );
 }

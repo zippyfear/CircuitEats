@@ -276,3 +276,15 @@ a{color:inherit;text-decoration:none}
 .cidot { flex:0 0 auto; width:11px; height:11px; border-radius:50%; background:var(--muted); opacity:.45; }
 .cidot.on { background:var(--good,#3a9d5d); opacity:1; box-shadow:0 0 0 4px var(--good-soft,rgba(58,157,93,.2)); }
 .checkin-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+/* ── v0.19.0 Circuit family page ── */
+.famhero { text-align:center; padding:22px 16px 6px; }
+.fam-emoji { font-size:44px; line-height:1; }
+.fam-tag { font-size:17px; font-weight:650; letter-spacing:-.01em; color:var(--accent-ink); }
+.famgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-top:6px; }
+.famcard { background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:12px; padding:15px 16px; }
+.famcard-top { display:flex; align-items:center; gap:8px; }
+.fam-emoji2 { font-size:20px; line-height:1; }
+.fam-badge { margin-left:auto; font-size:9.5px; font-weight:800; letter-spacing:.06em; padding:2px 7px; border-radius:6px; background:var(--surface2); color:var(--muted); }
+.fam-badge.live { background:var(--good,#3a9d5d); color:#fff; }
+.fam-tag2 { font-weight:650; font-size:14px; margin-top:8px; }
+.fam-blurb { font-size:12.5px; line-height:1.55; margin-top:5px; }
