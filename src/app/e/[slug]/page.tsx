@@ -94,7 +94,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         {board.map((v, i) => (
           <a className={`row ${i === 0 ? "top" : ""} ${v.ratingAvg < 5 ? "worst" : ""}`} href={`/v/${v.slug}`} key={v.id}>
             <div className="rank">{i + 1}</div>
-            <div><div className="v-name">{v.name}</div><div className="v-sub tnum">{v.ratingCount.toLocaleString()} ratings</div></div>
+            <div><div className="v-name">{v.name}</div><div className="v-sub tnum">{v.ratingCount.toLocaleString()} {v.ratingCount === 1 ? "rating" : "ratings"}</div></div>
             <div className="score"><div className="bar"><i style={{ width: `${Math.max(4, v.ratingAvg * 10)}%` }} /></div><div className="sc tnum">{v.ratingAvg.toFixed(1)}</div></div>
           </a>
         ))}

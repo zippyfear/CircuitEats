@@ -182,7 +182,7 @@ async function main() {
     let dc = (vslug.length * 7) % diners.length; // deterministic starting cursor per vendor
     for (const [eslug, delta] of apps) {
       const eventId = eventBy.get(eslug); if (!eventId) continue;
-      await db.appearance.upsert({ where: { vendorId_eventId: { vendorId: vendor.id, eventId } }, update: {}, create: { vendorId: vendor.id, eventId, qrSlug: `${vslug}-${eslug}`, boothLabel: "Booth" } });
+      await db.appearance.upsert({ where: { vendorId_eventId: { vendorId: vendor.id, eventId } }, update: {}, create: { vendorId: vendor.id, eventId, qrSlug: `${vslug}-${eslug}`, boothLabel: null } });
       const target = vbase + delta;
       for (const s of [clamp(Math.round(target)), clamp(Math.round(target) + 1), clamp(Math.round(target) - 1)]) {
         const userId = diners[dc % diners.length]; dc++;
@@ -196,9 +196,26 @@ async function main() {
     }
   }
 
-  // recompute aggregates for touched vendors + items (global = across all events)
-  for (const itemId of touchedItems) { const rows = await db.rating.findMany({ where: { itemId }, select: { score: true, weight: true } }); const a = wavg(rows); await db.item.update({ where: { id: itemId }, data: { ratingAvg: a.avg, ratingCount: a.count } }); }
-  for (const vendorId of touchedVendors) { const rows = await db.rating.findMany({ where: { vendorId }, select: { score: true, weight: true } }); const a = wavg(rows); await db.vendor.update({ where: { id: vendorId }, data: { ratingAvg: a.avg, ratingCount: a.count } }); }
+  // spread rating dates across the ~14 days before the anchor so time-series/trend
+  // charts actually draw (all seeds otherwise stamp createdAt = seed time → flat).
+  // Deterministic (index-based, fixed anchor) so `reset` stays reproducible.
+  {
+    const DAY = 86400000;
+    const anchor = new Date("2026-07-20T18:00:00Z").getTime();
+    const allR = await db.rating.findMany({ select: { id: true }, orderBy: { id: "asc" } });
+    for (let i = 0; i < allR.length; i++) {
+      const created = new Date(anchor - ((i * 61) % 14) * DAY - ((i * 37) % 24) * 3600000);
+      await db.rating.update({ where: { id: allR[i].id }, data: { createdAt: created } });
+    }
+  }
+
+  // FULL recompute of every item + vendor aggregate from actual Rating rows, so cached
+  // ratingAvg/ratingCount are always consistent (fixes stale base-seed numbers like a
+  // vendor showing 19 while one of its items still showed a hardcoded 1,900).
+  const allItems = await db.item.findMany({ select: { id: true } });
+  for (const it of allItems) { const rows = await db.rating.findMany({ where: { itemId: it.id }, select: { score: true, weight: true } }); const a = wavg(rows); await db.item.update({ where: { id: it.id }, data: { ratingAvg: a.avg, ratingCount: a.count } }); }
+  const allVendors = await db.vendor.findMany({ select: { id: true } });
+  for (const v of allVendors) { const rows = await db.rating.findMany({ where: { vendorId: v.id }, select: { score: true, weight: true } }); const a = wavg(rows); await db.vendor.update({ where: { id: v.id }, data: { ratingAvg: a.avg, ratingCount: a.count } }); }
 
   // belt-and-suspenders: flag ALL seeded roots as test (dev DB is all synthetic)
   await db.event.updateMany({ data: { isTest: true } });

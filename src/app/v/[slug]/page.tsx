@@ -79,7 +79,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
         <div>
           <h1>{vendor.name}</h1>
           <div className="ev">
-            {appearance ? `${appearance.event.name} · ${appearance.boothLabel ?? ""}` : vendor.homeBase ?? "On the circuit"}
+            {appearance ? `${appearance.event.name}${appearance.boothLabel ? ` · ${appearance.boothLabel}` : ""}` : vendor.homeBase ?? "On the circuit"}
           </div>
         </div>
       </div>

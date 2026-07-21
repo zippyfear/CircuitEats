@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 
 function fmt(a: Date, b: Date) {
   const o: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  return `${a.toLocaleDateString("en-US", o)} – ${b.toLocaleDateString("en-US", o)}, ${b.getFullYear()}`;
+  const s = a.toLocaleDateString("en-US", o), e = b.toLocaleDateString("en-US", o);
+  return `${s === e ? s : `${s} – ${e}`}, ${b.getFullYear()}`;
 }
 
 export default async function Home() {
@@ -29,7 +30,7 @@ export default async function Home() {
           {current.map((e) => (
             <a className="erow" href={`/e/${e.slug}`} key={e.id}>
               <div><div className="e-name">{e.name}</div><div className="e-meta">{e.venue ?? "on the circuit"}</div></div>
-              <div className="e-right"><div className="e-dates tnum">{fmt(e.startDate, e.endDate)}</div><div className="e-count tnum">{e._count.appearances} vendors</div></div>
+              <div className="e-right"><div className="e-dates tnum">{fmt(e.startDate, e.endDate)}</div><div className="e-count tnum">{e._count.appearances} {e._count.appearances === 1 ? "vendor" : "vendors"}</div></div>
             </a>
           ))}
         </div>
@@ -41,7 +42,7 @@ export default async function Home() {
           {past.map((e) => (
             <a className="erow" href={`/e/${e.slug}`} key={e.id}>
               <div><div className="e-name">{e.name}</div><div className="e-meta">{e.venue ?? "on the circuit"}</div></div>
-              <div className="e-right"><div className="e-dates tnum">{fmt(e.startDate, e.endDate)}</div><div className="e-count tnum">{e._count.appearances} vendors</div></div>
+              <div className="e-right"><div className="e-dates tnum">{fmt(e.startDate, e.endDate)}</div><div className="e-count tnum">{e._count.appearances} {e._count.appearances === 1 ? "vendor" : "vendors"}</div></div>
             </a>
           ))}
         </div>
@@ -54,7 +55,7 @@ export default async function Home() {
         {top.map((v, i) => (
           <a className={`row ${i === 0 ? "top" : ""} ${v.ratingAvg < 5 ? "worst" : ""}`} href={`/v/${v.slug}`} key={v.id}>
             <div className="rank">{i + 1}</div>
-            <div><div className="v-name">{v.name}</div><div className="v-sub tnum">{v.ratingCount.toLocaleString()} ratings</div></div>
+            <div><div className="v-name">{v.name}</div><div className="v-sub tnum">{v.ratingCount.toLocaleString()} {v.ratingCount === 1 ? "rating" : "ratings"}</div></div>
             <div className="score"><div className="bar"><i style={{ width: `${Math.max(4, v.ratingAvg * 10)}%` }} /></div><div className="sc tnum">{v.ratingAvg.toFixed(1)}</div></div>
           </a>
         ))}
