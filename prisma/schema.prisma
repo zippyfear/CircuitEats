@@ -600,3 +600,13 @@ model ModerationConfig {
   ratingBanStrikes  Int      @default(5)   // strikes to block rating
   updatedAt         DateTime @updatedAt @default(now())
 }
+
+// Lightweight page-view log for vendor analytics (non-owner visits).
+model VendorView {
+  id        String   @id @default(cuid())
+  vendorId  String
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([vendorId, createdAt])
+}

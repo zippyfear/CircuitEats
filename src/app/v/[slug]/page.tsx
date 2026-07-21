@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import RateWidget from "@/components/RateWidget";
 import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 import WaitWidget from "@/components/WaitWidget";
-import { currentUser } from "@/lib/roles";
+import { currentUser, isPlatformAdmin } from "@/lib/roles";
+import ViewBeacon from "@/components/ViewBeacon";
 import ClaimButton from "@/components/ClaimButton";
 import FollowButton from "@/components/FollowButton";
 import PhotoControls from "@/components/PhotoControls";
@@ -29,6 +30,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const me = await currentUser(); // view is open; rating/wait actions gated on sign-in
   const authed = !!me;
   const isOwner = !!me && vendor.ownerUserId === me.id;
+  const isAdmin = !!me && (await isPlatformAdmin(me.id));
   const canClaim = !!me && !vendor.claimed;
   const links = Array.isArray(vendor.customLinks) ? (vendor.customLinks as { label: string; url: string }[]) : [];
   const following = !!me && !!(await db.follow.findFirst({ where: { userId: me.id, targetType: "VENDOR", vendorId: vendor.id } }));
@@ -52,6 +54,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
   return (
     <main className="wrap">
+      {!isOwner && !isAdmin && <ViewBeacon vendorId={vendor.id} />}
       <a className="back" href="/">‹ All vendors</a>
       <div className="vhero">
         {vendor.logoUrl && <img src={vendor.logoUrl} alt="" className="vlogo" />}
@@ -83,7 +86,8 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
       <div className="vactions">
         <FollowButton vendorId={vendor.id} initialFollowing={following} initialCount={followCount} authed={authed} />
-        {isOwner && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/edit`}>✎ Edit</a>}
+        {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/edit`}>✎ Edit</a>}
+        {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/analytics`}>📊 Analytics</a>}
         {canClaim && <ClaimButton vendorId={vendor.id} />}
       </div>
       {links.length > 0 && (
