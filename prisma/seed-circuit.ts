@@ -21,6 +21,9 @@ const EVENTS: { slug: string; name: string; city: string; region: string; venue:
   { slug: "brushy-creek-bbq-2026", name: "Brushy Creek Backyard BBQ Cook-Off 2026", city: "Round Rock", region: "TX", venue: "Brushy Creek Community Center Park, Round Rock, TX", lat: 30.5083, lng: -97.6789, start: "2026-05-02", end: "2026-05-02", type: "rib" },
   { slug: "sweetwater-rattlesnake-2026", name: "Sweetwater Rattlesnake Roundup 2026", city: "Sweetwater", region: "TX", venue: "Nolan County Coliseum, Sweetwater, TX", lat: 32.4709, lng: -100.4059, start: "2026-03-13", end: "2026-03-15", type: "chili" },
   { slug: "pflugerville-chili-pfest-2026", name: "Pflugerville Pfall Chili Pfest 2026", city: "Pflugerville", region: "TX", venue: "Downtown Pflugerville, TX", lat: 30.4394, lng: -97.6200, start: "2026-10-17", end: "2026-10-17", type: "chili" },
+  { slug: "german-fest-milwaukee-2026", name: "German Fest Milwaukee 2026", city: "Milwaukee", region: "WI", venue: "Henry Maier Festival Park, Milwaukee, WI", lat: 43.0285, lng: -87.8977, start: "2026-07-24", end: "2026-07-26", type: "german",
+    web: "https://germanfest.com/",
+    desc: "One of the largest German festivals in North America — a Milwaukee lakefront tradition since 1981. Authentic German food (brats, pretzels, schnitzel, strudel), German beer, live bands, the Dachshund Derby and more across 75 acres of Henry Maier Festival Park." },
 ];
 
 // ── new REAL touring vendors + chili teams (existing 6 are added via APPEARANCES) ──
@@ -42,6 +45,11 @@ const NEW_VENDORS = [
   { slug: "belly-out-bbq", name: "Belly Out BBQ", home: "Columbus, OH", base: 8.8, items: [["Award Brisket", "Brisket", 1900, null], ["Pork Belly Bites", "Pulled Pork", 1300, null]] },
   { slug: "taestys", name: "Taesty's", home: "Columbus, OH", base: 8.1, items: [["Fried Chicken & Mac", "Chicken", 1300, null]] },
   { slug: "juniors-sweetpotato-pie", name: "Junior's Sweetpotato Pie", home: "Columbus, OH", base: 9.0, items: [["Sweet Potato Pie", "Dessert", 600, null]] },
+  // ── German Fest Milwaukee 2026 — generic demo vendors (site publishes no roster; do NOT name real businesses) ──
+  { slug: "brat-haus-mke", name: "Brat Haus MKE", home: "Milwaukee, WI", base: 8.6, items: [["Bratwurst mit Kraut", "Sausage", 900, null], ["Currywurst", "Sausage", 1000, null]] },
+  { slug: "bavarian-pretzel-haus", name: "Bavarian Pretzel Haus", home: "Milwaukee, WI", base: 8.9, items: [["Giant Bavarian Pretzel", "Pretzels", 800, null], ["Pretzel mit Obatzda", "Pretzels", 1100, null]] },
+  { slug: "schnitzel-wagen", name: "Schnitzel Wagen", home: "Madison, WI", base: 8.4, items: [["Pork Schnitzel Plate", "Schnitzel", 1400, null], ["Jägerschnitzel", "Schnitzel", 1600, null]] },
+  { slug: "schwarzwald-strudel", name: "Schwarzwald Strudel Co.", home: "Milwaukee, WI", base: 8.7, items: [["Apple Strudel", "Dessert", 700, null], ["Black Forest Cake", "Dessert", 800, null]] },
 ] as const;
 
 // vendorSlug → [ [eventSlug, ratingDelta] ]  (touring vendors span many events)
@@ -66,6 +74,11 @@ const APPEARANCES: Record<string, [string, number][]> = {
   "belly-out-bbq": [["columbus-jazz-rib-2026", 0.3]],
   "taestys": [["columbus-jazz-rib-2026", 0.0]],
   "juniors-sweetpotato-pie": [["columbus-jazz-rib-2026", 0.2]],
+  // German Fest Milwaukee (local WI vendors, single-event — realistic)
+  "brat-haus-mke": [["german-fest-milwaukee-2026", 0.2]],
+  "bavarian-pretzel-haus": [["german-fest-milwaukee-2026", 0.3]],
+  "schnitzel-wagen": [["german-fest-milwaukee-2026", 0.1]],
+  "schwarzwald-strudel": [["german-fest-milwaukee-2026", 0.2]],
   "porky-chicks-bbq": [["happy-harrys-ribfest-2026", 0.2], ["columbus-jazz-rib-2026", 0.1]],
   "lone-star-chili-co": [["pflugerville-chili-pfest-2026", 0.3], ["sweetwater-rattlesnake-2026", 0.2]],
   "five-alarm-chili": [["sweetwater-rattlesnake-2026", 0.4], ["pflugerville-chili-pfest-2026", 0.1]],
@@ -75,10 +88,11 @@ const clamp = (n: number) => Math.max(1, Math.min(10, n));
 const wavg = (rows: { score: number; weight: number }[]) => { if (!rows.length) return { avg: 0, count: 0 }; const w = rows.reduce((a, r) => a + r.weight, 0) || rows.length; return { avg: Math.round((rows.reduce((a, r) => a + r.score * r.weight, 0) / w) * 10) / 10, count: rows.length }; };
 
 async function main() {
-  // categories: ensure Chili exists
-  for (const name of ["Chili"]) {
+  // categories: ensure focus-specific ones exist (Chili; German Fest adds Pretzels/Schnitzel)
+  let so = 16;
+  for (const name of ["Chili", "Pretzels", "Schnitzel"]) {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    await db.category.upsert({ where: { name }, update: {}, create: { name, slug, sortOrder: 16 } });
+    await db.category.upsert({ where: { name }, update: {}, create: { name, slug, sortOrder: so++ } });
   }
   const cats = new Map((await db.category.findMany()).map((c) => [c.name, c.id]));
 
