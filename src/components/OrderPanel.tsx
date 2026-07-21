@@ -8,10 +8,10 @@ type OrderView = { id: string; status: string; totalCents: number; tableLabel: s
 const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
 const STATUS_LABEL: Record<string, string> = { PLACED: "Sent to kitchen", PREPARING: "Preparing", READY: "Ready for pickup", PICKED_UP: "Picked up", CANCELED: "Canceled" };
 
-export default function OrderPanel({ appearanceId, vendorName, menu, authed, canOrder }: { appearanceId: string; vendorName: string; menu: MItem[]; authed: boolean; canOrder: boolean }) {
+export default function OrderPanel({ appearanceId, vendorName, menu, authed, canOrder, slug, initialTable, tableLocked }: { appearanceId: string; vendorName: string; menu: MItem[]; authed: boolean; canOrder: boolean; slug: string; initialTable?: string | null; tableLocked?: boolean }) {
   const [cart, setCart] = useState<Line[]>([]);
   const [sel, setSel] = useState<Record<string, string>>({});
-  const [table, setTable] = useState("");
+  const [table, setTable] = useState(initialTable ?? "");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [placed, setPlaced] = useState<OrderView | null>(null);
@@ -33,7 +33,7 @@ export default function OrderPanel({ appearanceId, vendorName, menu, authed, can
   const total = cart.reduce((n, l) => n + l.priceCents * l.qty, 0);
 
   async function place() {
-    if (!authed) { location.href = "/signin"; return; }
+    if (!authed) { location.href = "/signin?callbackUrl=" + encodeURIComponent(`/v/${slug}/order${table ? `?t=${encodeURIComponent(table)}` : ""}`); return; }
     if (!cart.length) return;
     setBusy(true);
     try {
@@ -99,7 +99,7 @@ export default function OrderPanel({ appearanceId, vendorName, menu, authed, can
             </div>
           ))}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table # (optional)" style={{ flex: "1 1 120px", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 13 }} />
+            {!tableLocked && <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table # (optional)" style={{ flex: "1 1 120px", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 13 }} />}
             <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" style={{ flex: "2 1 160px", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 13 }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>

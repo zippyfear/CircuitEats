@@ -361,3 +361,11 @@ a{color:inherit;text-decoration:none}
 .s-ready { background:var(--gold,#b98900); color:#fff; }
 .s-picked_up { background:var(--surface2); color:var(--muted); }
 .s-canceled { background:var(--bad-soft,#fbe7e2); color:var(--bad); }
+/* ── v0.25.0 table QR ordering ── */
+.tablebanner { background:var(--accent-soft); color:var(--accent-ink); border:1px solid var(--accent); border-radius:11px; padding:10px 14px; font-size:14px; margin:6px 0 12px; }
+.qrgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+.qrcard { border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; background:#fff; break-inside:avoid; }
+.qrcard-t { font-weight:800; font-size:15px; color:#211B16; }
+.qrcard img { width:100%; max-width:160px; height:auto; margin:6px 0; }
+.qrcard-v { font-size:11px; color:#8A7C6D; }
+@media print { .adminhdr, .back, form, .vactions { display:none !important; } .qrgrid { grid-template-columns:repeat(3,1fr); } }
