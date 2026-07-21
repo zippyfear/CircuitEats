@@ -20,7 +20,7 @@ export default async function Home() {
       <div className="top">
         <div className="brand">
           <span className="flame">🔥</span>
-          <div><h1>CircuitEats</h1><div className="sub">Find the best food on the circuit</div></div>
+          <div><h1>CircuitEats</h1><div className="sub">Find the best — at the best events</div></div>
         </div>
         <AuthNav />
       </div>
