@@ -206,6 +206,7 @@ model Item {
   unit         String?                     // priced-by unit for per-unit avg ("rib", "lb", "link"); null = no natural unit
   variants     ItemVariant[]              // portion/size pricing (Small/Med/Large, 3-bones/half-rack/full-rack)
   dietaryTags  String[]                    // ["GF","spicy","veg"] (§15 #9)
+  posRef       String?                     // external POS catalog id (Toast/Square) for order handoff
   ratingAvg    Float     @default(0)
   ratingCount  Int       @default(0)
   ratings      Rating[]
@@ -437,6 +438,10 @@ model Order {
   status              OrderStatus @default(PLACED)
   totalCents          Int
   stripePaymentIntent String?
+  tableLabel          String?                     // dine-in table (venue/restaurant orders)
+  notes               String?
+  posProvider         PosProvider?                // which POS the order was handed to
+  posOrderId          String?                     // external order id returned by the POS
   items               OrderItem[]
   createdAt           DateTime    @default(now())
   readyAt             DateTime?
@@ -452,6 +457,7 @@ model OrderItem {
   nameSnap   String                          // name at time of order
   priceCents Int
   qty        Int    @default(1)
+  variantLabel String?                          // chosen portion/size, if any
 }
 
 model ItemVariant {
@@ -609,4 +615,22 @@ model VendorView {
   createdAt DateTime @default(now())
 
   @@index([vendorId, createdAt])
+}
+
+enum PosProvider {
+  MOCK
+  SQUARE
+  TOAST
+}
+
+// Per-vendor POS link for order handoff. MOCK = dev/testable with no external account.
+model PosConnection {
+  id          String      @id @default(cuid())
+  vendorId    String      @unique
+  provider    PosProvider @default(MOCK)
+  externalRef String?                          // merchant/location id (Square) or restaurant GUID (Toast)
+  accessToken String?
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }

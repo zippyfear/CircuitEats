@@ -86,8 +86,10 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
       <div className="vactions">
         <FollowButton vendorId={vendor.id} initialFollowing={following} initialCount={followCount} authed={authed} />
+        <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/order`}>🧾 Order</a>
         {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/edit`}>✎ Edit</a>}
         {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/analytics`}>📊 Analytics</a>}
+        {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/orders`}>🧾 Queue</a>}
         {canClaim && <ClaimButton vendorId={vendor.id} />}
       </div>
       {links.length > 0 && (

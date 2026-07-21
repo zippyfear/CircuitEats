@@ -351,3 +351,13 @@ a{color:inherit;text-decoration:none}
 .rankbadge.gold { background:var(--gold,#b98900); color:#fff; }
 .vbar { height:12px; border-radius:99px; background:var(--surface2); overflow:hidden; }
 .vbar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--good,#3a9d5d),#57c07f); }
+/* ── v0.24.0 ordering ── */
+.qbtn { width:26px; height:26px; border-radius:7px; border:1px solid var(--line); background:var(--surface2); color:var(--ink); font-weight:800; font-size:15px; cursor:pointer; line-height:1; }
+.cta.ghost { background:var(--surface2); color:var(--muted); }
+.cta.ghost:hover { color:var(--bad); }
+.ostatus { font-size:10px; font-weight:800; letter-spacing:.04em; padding:2px 8px; border-radius:6px; }
+.s-placed { background:var(--accent-soft); color:var(--accent-ink); }
+.s-preparing { background:var(--good-soft,#e7f5ec); color:var(--good,#3a9d5d); }
+.s-ready { background:var(--gold,#b98900); color:#fff; }
+.s-picked_up { background:var(--surface2); color:var(--muted); }
+.s-canceled { background:var(--bad-soft,#fbe7e2); color:var(--bad); }
