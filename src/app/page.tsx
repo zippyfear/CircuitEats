@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import AuthNav from "@/components/AuthNav";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +21,6 @@ export default async function Home() {
           <span className="flame">🔥</span>
           <div><h1>CircuitEats</h1><div className="sub">Find the best — at the best events</div></div>
         </div>
-        <AuthNav />
       </div>
 
       {current.length > 0 && <>

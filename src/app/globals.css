@@ -412,3 +412,15 @@ a{color:inherit;text-decoration:none}
 .circuit-row .nm { font-weight:700; }
 .circuit-row .mt { font-size:12.5px; color:var(--muted,#8a8a8a); margin-top:2px; }
 .circuit-score { font-weight:800; white-space:nowrap; font-size:15px; }
+/* ── #2 global site header (all pages via layout) ── */
+.siteheader { position:sticky; top:0; z-index:50; min-height:46px; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+.siteheader-in { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:14px; padding:9px 18px; }
+.sh-brand { display:flex; align-items:center; gap:9px; text-decoration:none; color:inherit; }
+.sh-brand .flame { width:28px; height:28px; font-size:15px; border-radius:8px; }
+.sh-name { font-weight:800; letter-spacing:-.02em; font-size:16px; }
+.sh-links { display:flex; gap:2px; flex:1; flex-wrap:wrap; }
+.sh-links a { font-size:13px; font-weight:600; color:var(--muted); text-decoration:none; padding:5px 10px; border-radius:8px; white-space:nowrap; }
+.sh-links a:hover { background:var(--surface2); color:var(--accent-ink); }
+.sh-auth { display:flex; align-items:center; }
+/* /family already has its own section subnav — tuck it under the global header */
+.circnav { top:46px !important; z-index:30 !important; }
