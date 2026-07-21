@@ -2,11 +2,13 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/roles";
 import { getPosAdapter, type PosOrderLine } from "@/lib/pos";
+import { checkLimit } from "@/lib/ratelimit";
 
 // Place an order → build it, save it, hand it to the vendor's POS (mock/real).
 export async function POST(req: Request) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Sign in to order." }, { status: 401 });
+  { const rl = checkLimit(req, user.id, "order", 10); if (rl) return rl; }
   const { appearanceId, tableLabel, notes, items } = await req.json();
   if (!appearanceId || !Array.isArray(items) || items.length === 0) return NextResponse.json({ error: "appearanceId + items required." }, { status: 400 });
 

@@ -12,7 +12,8 @@
     "reset": "tsx prisma/reset.ts",
     "smoke": "tsx scripts/smoke.ts",
     "seed:circuit": "tsx prisma/seed-circuit.ts",
-    "purge:test": "tsx prisma/purge-test.ts"
+    "purge:test": "tsx prisma/purge-test.ts",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

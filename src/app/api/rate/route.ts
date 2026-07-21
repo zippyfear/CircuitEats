@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { derivePresence, ratingWeight, type Tier } from "@/lib/presence";
+import { checkLimit } from "@/lib/ratelimit";
 
 // Rating requires sign-in (viewing is open; write actions are gated).
 // Weight is COMPUTED from verified presence (GEO / QR / both) × reviewer trust,
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to rate." }, { status: 401 });
   const userId = session.user.id;
+  { const rl = checkLimit(req, userId, "rate", 30); if (rl) return rl; }
   const { itemId, vendorId, score, eventId, lat, lng, tags, note, photoUrl } = await req.json();
   if (!itemId || !vendorId || typeof score !== "number" || score < 1 || score > 10) {
     return NextResponse.json({ error: "Provide itemId, vendorId, and a score 1–10." }, { status: 400 });

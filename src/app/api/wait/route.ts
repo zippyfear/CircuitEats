@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { checkLimit } from "@/lib/ratelimit";
 
 // Worth-the-Wait (§15 #1): crowd wait reports → rolling median → Appearance.currentWaitMin.
 // Reporting requires sign-in (viewing is open; write actions are gated).
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to report a wait." }, { status: 401 });
   const userId = session.user.id;
+  { const rl = checkLimit(req, userId, "wait", 20); if (rl) return rl; }
   const { appearanceId, waitMin } = await req.json();
   if (!appearanceId || typeof waitMin !== "number" || waitMin < 0 || waitMin > 240) {
     return NextResponse.json({ error: "Provide appearanceId and waitMin (0–240)." }, { status: 400 });

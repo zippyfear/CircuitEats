@@ -2,11 +2,13 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/roles";
 import { resolveEventConfig } from "@/lib/config";
+import { checkLimit } from "@/lib/ratelimit";
 
 // People's Choice (§15 #6): one vote per user per category per event, changeable. Live tallies.
 export async function POST(req: Request) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Sign in to vote." }, { status: 401 });
+  { const rl = checkLimit(req, user.id, "vote", 20); if (rl) return rl; }
   const { eventId, categoryId, vendorId } = await req.json();
   if (!eventId || !categoryId || !vendorId) return NextResponse.json({ error: "eventId, categoryId, vendorId required." }, { status: 400 });
 
