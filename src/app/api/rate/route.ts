@@ -1,8 +1,11 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { derivePresence, ratingWeight, type Tier } from "@/lib/presence";
 
 // Rating requires sign-in (viewing is open; write actions are gated).
+// Weight is COMPUTED from verified presence (GEO / QR / both) × reviewer trust,
+// so ratings from people confirmed to be at the event count for more.
 
 function weightedAvg(rows: { score: number; weight: number }[]) {
   if (rows.length === 0) return { avg: 0, count: 0 };
@@ -15,15 +18,22 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to rate." }, { status: 401 });
   const userId = session.user.id;
-  const { itemId, vendorId, score } = await req.json();
+  const { itemId, vendorId, score, eventId, lat, lng } = await req.json();
   if (!itemId || !vendorId || typeof score !== "number" || score < 1 || score > 10) {
     return NextResponse.json({ error: "Provide itemId, vendorId, and a score 1–10." }, { status: 400 });
   }
 
+  // resolve presence tier + weight (verified presence × reviewer trust)
+  const me = await db.user.findUnique({ where: { id: userId }, select: { reviewerScore: true } });
+  let tier: Tier = "REMOTE"; let geo = false, qr = false;
+  const event = eventId ? await db.event.findUnique({ where: { id: String(eventId) }, select: { id: true, lat: true, lng: true, geoRadiusM: true } }) : null;
+  if (event) { const p = await derivePresence(userId, event, typeof lat === "number" ? lat : null, typeof lng === "number" ? lng : null); tier = p.tier; geo = p.geo; qr = p.qr; }
+  const weight = ratingWeight(tier, me?.reviewerScore ?? 0.5);
+
   await db.rating.upsert({
     where: { userId_itemId: { userId, itemId } },
-    update: { score, weight: 1.5, verified: true },
-    create: { userId, itemId, vendorId, score, weight: 1.5, verified: true, tags: [] },
+    update: { score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null },
+    create: { userId, itemId, vendorId, score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null, tags: [] },
   });
 
   const [itemRows, vendorRows] = await Promise.all([
@@ -38,5 +48,5 @@ export async function POST(req: Request) {
     db.vendor.update({ where: { id: vendorId }, data: { ratingAvg: ve.avg, ratingCount: ve.count } }),
   ]);
 
-  return NextResponse.json({ itemAvg: it.avg, itemCount: it.count, vendorAvg: ve.avg });
+  return NextResponse.json({ itemAvg: it.avg, itemCount: it.count, vendorAvg: ve.avg, presence: tier, geo, qr, weight });
 }

@@ -107,7 +107,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
                 )}
               </div>
               <div className="price tnum">{avgUnit != null ? <>{money(avgUnit)}<span className="perunit">/{it.unit}</span></> : lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
-              <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} />
+              <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} eventId={appearance?.eventId ?? null} />
             </div>
           );
         })}

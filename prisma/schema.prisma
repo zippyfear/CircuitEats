@@ -224,6 +224,8 @@ model Event {
   lat             Float?
   lng             Float?
   geohash         String?                   // proximity prefix index (§15 #2 "near me")
+  checkInToken    String?       @unique      // event QR day-pass token (scan once → verified for the day)
+  geoRadiusM      Int           @default(800) // meters from lat/lng that count as "present"
   startDate       DateTime
   endDate         DateTime
   website         String?
@@ -292,6 +294,7 @@ model Rating {
   // integrity (§4 #2 / §6): weight = f(verified, reviewerScore)
   verified  Boolean  @default(false)         // backed by a matching CheckIn or Order
   weight    Float    @default(1.0)
+  presence  PresenceTier @default(REMOTE)   // how presence was confirmed -> trust weight
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -309,6 +312,7 @@ model CheckIn {
   event        Event       @relation(fields: [eventId], references: [id])
   appearanceId String?
   appearance   Appearance? @relation(fields: [appearanceId], references: [id])
+  method       CheckInMethod @default(GEO)   // GEO (device location) or QR (event day-pass)
   lat          Float?
   lng          Float?
   createdAt    DateTime    @default(now())
@@ -511,4 +515,16 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+enum PresenceTier {
+  REMOTE
+  GEO
+  QR
+  GEO_QR
+}
+
+enum CheckInMethod {
+  GEO
+  QR
 }

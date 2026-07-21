@@ -1,21 +1,30 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { resolveEventConfig } from "@/lib/config";
-import { currentUser, isEventCoordinator } from "@/lib/roles";
+import { currentUser, isEventCoordinator, isPlatformAdmin } from "@/lib/roles";
 import EventClaimButton from "@/components/EventClaimButton";
 import PeoplesChoice from "@/components/PeoplesChoice";
+import CheckInPanel from "@/components/CheckInPanel";
+import QRCode from "qrcode";
 
 export const dynamic = "force-dynamic";
 
-export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EventPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ checkin?: string }> }) {
   const { slug } = await params;
+  const { checkin } = await searchParams;
   const event = await db.event.findUnique({ where: { slug }, include: { appearances: { include: { vendor: true } } } });
   if (!event) notFound();
   const cfg = await resolveEventConfig(slug);
   const me = await currentUser();
   const isCoord = !!me && (await isEventCoordinator(me.id, event.id));
+  const isAdmin = !!me && (await isPlatformAdmin(me.id));
   const canClaim = !!me && !event.organizerUserId;
   const theme = (cfg.theme ?? {}) as { accent?: string; bannerUrl?: string; logoUrl?: string };
+
+  // event check-in QR (printable) — coordinators/admins only
+  const canSeeCode = isCoord || isAdmin;
+  const checkInUrl = event.checkInToken ? `${process.env.AUTH_URL ?? ""}/e/${slug}/checkin?t=${event.checkInToken}` : null;
+  const qrDataUrl = canSeeCode && checkInUrl ? await QRCode.toDataURL(checkInUrl, { margin: 1, width: 264 }) : null;
   const board = event.appearances.map((a) => a.vendor).sort((x, y) => y.ratingAvg - x.ratingAvg);
 
   // categories present at this event → "browse by category" chips
@@ -61,6 +70,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         {isCoord && <a className="editlink" href={`/e/${slug}/manage`} style={{ margin: 0 }}>✎ Manage event</a>}
         {canClaim && <EventClaimButton eventId={event.id} />}
       </div>
+
+      {me && (checkInUrl || true) && (
+        <CheckInPanel eventId={event.id} authed={!!me} qrDataUrl={qrDataUrl} checkInUrl={canSeeCode ? checkInUrl : null} justChecked={checkin ?? null} />
+      )}
 
       <div className="eyebrow">{cfg.vocab.participantPlural} — by rating</div>
       <div className="card">

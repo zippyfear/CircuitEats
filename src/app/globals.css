@@ -270,3 +270,9 @@ a{color:inherit;text-decoration:none}
 .diffkey { font-weight:700; color:var(--ink); }
 .diffb { color:var(--bad); text-decoration:line-through; }
 .diffa { color:var(--good, #3a9d5d); }
+/* ── v0.18.0 verified-presence check-in ── */
+.checkin { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:12px 0 6px; }
+.checkin-status { display:flex; align-items:center; gap:11px; }
+.cidot { flex:0 0 auto; width:11px; height:11px; border-radius:50%; background:var(--muted); opacity:.45; }
+.cidot.on { background:var(--good,#3a9d5d); opacity:1; box-shadow:0 0 0 4px var(--good-soft,rgba(58,157,93,.2)); }
+.checkin-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
