@@ -8,6 +8,7 @@ export default async function AuthNav() {
   return (
     <div className="authnav">
       <a href="/following" className="authlink">Following</a>
+      <a href="/settings" className="authlink">Settings</a>
       <span className="who">{session.user.email}</span>
       <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
         <button type="submit">Sign out</button>

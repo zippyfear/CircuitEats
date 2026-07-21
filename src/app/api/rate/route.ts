@@ -28,7 +28,8 @@ export async function POST(req: Request) {
   const cleanPhoto = typeof photoUrl === "string" && photoUrl.trim() ? photoUrl.trim() : null;
 
   // resolve presence tier + weight (verified presence × reviewer trust)
-  const me = await db.user.findUnique({ where: { id: userId }, select: { reviewerScore: true } });
+  const me = await db.user.findUnique({ where: { id: userId }, select: { reviewerScore: true, ratingBanned: true } });
+  if (me?.ratingBanned) return NextResponse.json({ error: "Rating is disabled on your account." }, { status: 403 });
   let tier: Tier = "REMOTE"; let geo = false, qr = false;
   const event = eventId ? await db.event.findUnique({ where: { id: String(eventId) }, select: { id: true, lat: true, lng: true, geoRadiusM: true } }) : null;
   if (event) { const p = await derivePresence(userId, event, typeof lat === "number" ? lat : null, typeof lng === "number" ? lng : null); tier = p.tier; geo = p.geo; qr = p.qr; }

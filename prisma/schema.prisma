@@ -135,6 +135,10 @@ model User {
   displayName   String?
   avatarUrl     String?
   reviewerScore Float          @default(0.5)  // 0–1 trust; scales rating weight (§15 #8)
+  ratingMode    RatingMode     @default(SIMPLE)  // simple=overall only; detailed=tags+note+photo
+  photoStrikes  Int            @default(0)   // crowd-banned photos → strikes
+  photoBanned   Boolean        @default(false)
+  ratingBanned  Boolean        @default(false)
   ratings       Rating[]
   follows       Follow[]
   contributions Contribution[]
@@ -362,6 +366,11 @@ model Photo {
   eventId   String?
   event     Event?   @relation(fields: [eventId], references: [id])
   createdAt DateTime @default(now())
+  status    PhotoStatus @default(VISIBLE)
+  score     Int         @default(0)  // net quality votes
+  flagCount Int         @default(0)  // distinct inappropriate flags
+  votes     PhotoVote[]
+  flags     PhotoFlag[]
 
   @@index([itemId])
   @@index([vendorId])
@@ -546,4 +555,39 @@ model Vertical {
   active     Boolean  @default(true)
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
+}
+
+enum RatingMode {
+  SIMPLE
+  DETAILED
+}
+
+enum PhotoStatus {
+  VISIBLE
+  HIDDEN
+  BANNED
+}
+
+model PhotoVote {
+  id        String   @id @default(cuid())
+  photoId   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  userId    String
+  value     Int                              // +1 or -1 (quality)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, photoId])
+  @@index([photoId])
+}
+
+model PhotoFlag {
+  id        String   @id @default(cuid())
+  photoId   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, photoId])
+  @@index([photoId])
 }

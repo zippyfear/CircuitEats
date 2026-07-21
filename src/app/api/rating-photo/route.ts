@@ -19,6 +19,13 @@ export async function POST(req: Request) {
   if (!file.type.startsWith("image/")) return NextResponse.json({ error: "Images only." }, { status: 400 });
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "Max 5MB." }, { status: 400 });
 
+  // moderation gates: banned users can't post; one photo per vendor per day
+  const u = await db.user.findUnique({ where: { id: user.id }, select: { photoBanned: true, ratingBanned: true } });
+  if (u?.photoBanned || u?.ratingBanned) return NextResponse.json({ error: "Photo posting is disabled on your account." }, { status: 403 });
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const todayCount = await db.photo.count({ where: { userId: user.id, vendorId, createdAt: { gte: dayStart } } });
+  if (todayCount >= 1) return NextResponse.json({ error: "You can add one photo per vendor per day." }, { status: 429 });
+
   const ext = (file.type.split("/")[1] || "png").replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "").slice(0, 4);
   const name = `${randomUUID()}.${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads");

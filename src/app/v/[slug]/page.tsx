@@ -6,6 +6,7 @@ import WaitWidget from "@/components/WaitWidget";
 import { currentUser } from "@/lib/roles";
 import ClaimButton from "@/components/ClaimButton";
 import FollowButton from "@/components/FollowButton";
+import PhotoControls from "@/components/PhotoControls";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
     include: {
       items: { orderBy: { ratingAvg: "desc" }, include: { category: true, variants: { orderBy: { sortOrder: "asc" } } } },
       appearances: { include: { event: true }, take: 1 },
-      photos: { orderBy: { createdAt: "desc" }, take: 8 },
+      photos: { where: { status: "VISIBLE" }, orderBy: { createdAt: "desc" }, take: 8 },
     },
   });
   if (!vendor) notFound();
@@ -33,12 +34,21 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const following = !!me && !!(await db.follow.findFirst({ where: { userId: me.id, targetType: "VENDOR", vendorId: vendor.id } }));
   const followCount = await db.follow.count({ where: { targetType: "VENDOR", vendorId: vendor.id } });
 
+  // viewer prefs + moderation standing (drives rating mode + photo/rating gates)
+  const meUser = me ? await db.user.findUnique({ where: { id: me.id }, select: { ratingMode: true, photoBanned: true, ratingBanned: true } }) : null;
+  const ratingMode = meUser?.ratingMode ?? "SIMPLE";
+  const canPhoto = !!meUser && !meUser.photoBanned && !meUser.ratingBanned;
+  const canRate = !meUser || !meUser.ratingBanned;
+
   // richer-review data: top tags per item + recent reviews (note/photo/tags)
   const vratings = await db.rating.findMany({ where: { vendorId: vendor.id }, orderBy: { createdAt: "desc" }, take: 200, include: { user: { select: { displayName: true } }, item: { select: { name: true } } } });
   const tagByItem = new Map<string, Map<string, number>>();
   for (const r of vratings) { if (!r.itemId) continue; const m = tagByItem.get(r.itemId) ?? new Map<string, number>(); for (const t of r.tags) m.set(t, (m.get(t) ?? 0) + 1); tagByItem.set(r.itemId, m); }
   const topTags = (itemId: string) => Array.from(tagByItem.get(itemId)?.entries() ?? []).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
   const reviews = vratings.filter((r) => r.note || r.photoUrl || r.tags.length > 0).slice(0, 8);
+  // photo status/score map (hide crowd-moderated photos; power vote/flag controls)
+  const vphotos = await db.photo.findMany({ where: { vendorId: vendor.id }, select: { id: true, url: true, status: true, score: true, userId: true } });
+  const photoByUrl = new Map(vphotos.map((p) => [p.url, p]));
 
   return (
     <main className="wrap">
@@ -117,7 +127,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
                 )}
               </div>
               <div className="price tnum">{avgUnit != null ? <>{money(avgUnit)}<span className="perunit">/{it.unit}</span></> : lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
-              <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} eventId={appearance?.eventId ?? null} />
+              <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} eventId={appearance?.eventId ?? null} mode={ratingMode} canPhoto={canPhoto} canRate={canRate} />
             </div>
           );
         })}
@@ -127,16 +137,25 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
         <>
           <div className="eyebrow">Recent reviews</div>
           <div className="card">
-            {reviews.map((r) => (
-              <div className="review" key={r.id}>
-                {r.photoUrl && <img src={r.photoUrl} alt="" className="review-photo" />}
-                <div className="grow">
-                  <div className="review-head"><b>{r.item?.name ?? "—"}</b> <span className="review-score tnum">★ {r.score}</span> <span className="muted" style={{ fontSize: 12 }}>· {r.user.displayName ?? "diner"}{r.verified ? " · ✓ verified" : ""}</span></div>
-                  {r.tags.length > 0 && <div className="itemtags">{r.tags.map((t) => <span className="itemtag" key={t}>{t}</span>)}</div>}
-                  {r.note && <div className="review-note">“{r.note}”</div>}
+            {reviews.map((r) => {
+              const ph = r.photoUrl ? photoByUrl.get(r.photoUrl) : null;
+              const showPhoto = ph && ph.status === "VISIBLE";
+              return (
+                <div className="review" key={r.id}>
+                  {showPhoto && (
+                    <div className="review-photowrap">
+                      <img src={r.photoUrl!} alt="" className="review-photo" />
+                      <PhotoControls photoId={ph!.id} score={ph!.score} authed={authed} mine={ph!.userId === me?.id} />
+                    </div>
+                  )}
+                  <div className="grow">
+                    <div className="review-head"><b>{r.item?.name ?? "—"}</b> <span className="review-score tnum">★ {r.score}</span> <span className="muted" style={{ fontSize: 12 }}>· {r.user.displayName ?? "diner"}{r.verified ? " · ✓ verified" : ""}</span></div>
+                    {r.tags.length > 0 && <div className="itemtags">{r.tags.map((t) => <span className="itemtag" key={t}>{t}</span>)}</div>}
+                    {r.note && <div className="review-note">“{r.note}”</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
