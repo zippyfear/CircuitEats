@@ -18,10 +18,14 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to rate." }, { status: 401 });
   const userId = session.user.id;
-  const { itemId, vendorId, score, eventId, lat, lng } = await req.json();
+  const { itemId, vendorId, score, eventId, lat, lng, tags, note, photoUrl } = await req.json();
   if (!itemId || !vendorId || typeof score !== "number" || score < 1 || score > 10) {
     return NextResponse.json({ error: "Provide itemId, vendorId, and a score 1–10." }, { status: 400 });
   }
+  // richer review fields (all optional)
+  const cleanTags = Array.isArray(tags) ? Array.from(new Set(tags.filter((t) => typeof t === "string" && t.trim()).map((t) => String(t).trim()))).slice(0, 6) : [];
+  const cleanNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 240) : null;
+  const cleanPhoto = typeof photoUrl === "string" && photoUrl.trim() ? photoUrl.trim() : null;
 
   // resolve presence tier + weight (verified presence × reviewer trust)
   const me = await db.user.findUnique({ where: { id: userId }, select: { reviewerScore: true } });
@@ -32,8 +36,8 @@ export async function POST(req: Request) {
 
   await db.rating.upsert({
     where: { userId_itemId: { userId, itemId } },
-    update: { score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null },
-    create: { userId, itemId, vendorId, score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null, tags: [] },
+    update: { score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null, tags: cleanTags, note: cleanNote, photoUrl: cleanPhoto },
+    create: { userId, itemId, vendorId, score, weight, verified: tier !== "REMOTE", presence: tier, eventId: event?.id ?? null, tags: cleanTags, note: cleanNote, photoUrl: cleanPhoto },
   });
 
   const [itemRows, vendorRows] = await Promise.all([

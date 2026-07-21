@@ -291,6 +291,7 @@ model Rating {
   score     Int                              // 1–10 (CHECK constraint in migration)
   tags      String[]                         // ["worth-the-wait","skip","great-bark"]
   note      String?
+  photoUrl  String?                          // optional photo attached to this review
   // integrity (§4 #2 / §6): weight = f(verified, reviewerScore)
   verified  Boolean  @default(false)         // backed by a matching CheckIn or Order
   weight    Float    @default(1.0)

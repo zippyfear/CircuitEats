@@ -33,6 +33,13 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
   const following = !!me && !!(await db.follow.findFirst({ where: { userId: me.id, targetType: "VENDOR", vendorId: vendor.id } }));
   const followCount = await db.follow.count({ where: { targetType: "VENDOR", vendorId: vendor.id } });
 
+  // richer-review data: top tags per item + recent reviews (note/photo/tags)
+  const vratings = await db.rating.findMany({ where: { vendorId: vendor.id }, orderBy: { createdAt: "desc" }, take: 200, include: { user: { select: { displayName: true } }, item: { select: { name: true } } } });
+  const tagByItem = new Map<string, Map<string, number>>();
+  for (const r of vratings) { if (!r.itemId) continue; const m = tagByItem.get(r.itemId) ?? new Map<string, number>(); for (const t of r.tags) m.set(t, (m.get(t) ?? 0) + 1); tagByItem.set(r.itemId, m); }
+  const topTags = (itemId: string) => Array.from(tagByItem.get(itemId)?.entries() ?? []).sort((a, b) => b[1] - a[1]).slice(0, 2).map((x) => x[0]);
+  const reviews = vratings.filter((r) => r.note || r.photoUrl || r.tags.length > 0).slice(0, 8);
+
   return (
     <main className="wrap">
       <a className="back" href="/">‹ All vendors</a>
@@ -105,6 +112,9 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
                     {it.variants.map((v) => <span className="menu-portion" key={v.id} title={v.note ?? undefined}><b>{v.label}</b> <span className="tnum">{money(v.priceCents)}</span></span>)}
                   </div>
                 )}
+                {topTags(it.id).length > 0 && (
+                  <div className="itemtags">{topTags(it.id).map((t) => <span className="itemtag" key={t}>{t}</span>)}</div>
+                )}
               </div>
               <div className="price tnum">{avgUnit != null ? <>{money(avgUnit)}<span className="perunit">/{it.unit}</span></> : lo == null ? "" : lo === hi ? money(lo) : `${money(lo)}+`}</div>
               <RateWidget itemId={it.id} vendorId={vendor.id} current={it.ratingAvg} authed={authed} eventId={appearance?.eventId ?? null} />
@@ -112,6 +122,24 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
           );
         })}
       </div>
+
+      {reviews.length > 0 && (
+        <>
+          <div className="eyebrow">Recent reviews</div>
+          <div className="card">
+            {reviews.map((r) => (
+              <div className="review" key={r.id}>
+                {r.photoUrl && <img src={r.photoUrl} alt="" className="review-photo" />}
+                <div className="grow">
+                  <div className="review-head"><b>{r.item?.name ?? "—"}</b> <span className="review-score tnum">★ {r.score}</span> <span className="muted" style={{ fontSize: 12 }}>· {r.user.displayName ?? "diner"}{r.verified ? " · ✓ verified" : ""}</span></div>
+                  {r.tags.length > 0 && <div className="itemtags">{r.tags.map((t) => <span className="itemtag" key={t}>{t}</span>)}</div>}
+                  {r.note && <div className="review-note">“{r.note}”</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="foot">Ratings here roll up to {vendor.name}&apos;s global reputation — across every event on the circuit.</div>
     </main>
