@@ -394,3 +394,8 @@ a{color:inherit;text-decoration:none}
 .comingrow:last-child { border-bottom:0; }
 .comingrow b { font-size:15px; }
 .coming-ic { font-size:20px; line-height:1.3; flex:0 0 auto; }
+/* ── v0.28.1 business-plan page ── */
+.marketkey { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:12.5px; color:var(--muted); }
+.marketkey b { color:var(--ink); }
+.chart2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+@media (max-width:640px){ .chart2 { grid-template-columns:1fr; } }
