@@ -399,3 +399,8 @@ a{color:inherit;text-decoration:none}
 .marketkey b { color:var(--ink); }
 .chart2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
 @media (max-width:640px){ .chart2 { grid-template-columns:1fr; } }
+/* ── v0.29.0 event info block ── */
+.einfo { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin:12px 0 0; font-size:13.5px; font-weight:600; color:var(--ink); }
+.einfo a { color:var(--accent-ink); text-decoration:none; font-weight:700; }
+.einfo a:hover { text-decoration:underline; }
+.edesc { font-size:14px; line-height:1.65; color:var(--ink2,var(--ink)); max-width:680px; margin:8px 0 0; }

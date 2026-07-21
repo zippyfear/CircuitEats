@@ -9,6 +9,12 @@ import QRCode from "qrcode";
 
 export const dynamic = "force-dynamic";
 
+function fmtRange(a: Date, b: Date) {
+  const o: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const s = a.toLocaleDateString("en-US", o), e = b.toLocaleDateString("en-US", o);
+  return `${s === e ? s : `${s} – ${e}`}, ${b.getFullYear()}`;
+}
+
 export default async function EventPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ checkin?: string }> }) {
   const { slug } = await params;
   const { checkin } = await searchParams;
@@ -65,6 +71,14 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="esub">{event.venue}</div>
         </div>
       </div>
+
+      {/* event information (dates · location · website · description) */}
+      <div className="einfo">
+        <span className="tnum">📅 {fmtRange(event.startDate, event.endDate)}</span>
+        {event.city && <span>📍 {event.city}{event.region ? `, ${event.region}` : ""}</span>}
+        {event.website && <a href={event.website} target="_blank" rel="noopener noreferrer">Event website ↗</a>}
+      </div>
+      {event.description && <p className="edesc">{event.description}</p>}
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "12px 0 4px" }}>
         {isCoord && <a className="editlink" href={`/e/${slug}/manage`} style={{ margin: 0 }}>✎ Manage event</a>}

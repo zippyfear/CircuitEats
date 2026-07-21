@@ -10,11 +10,13 @@ const db = new PrismaClient();
 const D = (s: string) => new Date(s);
 
 // ── real festivals (the circuit) ──
-const EVENTS = [
+const EVENTS: { slug: string; name: string; city: string; region: string; venue: string; lat: number; lng: number; start: string; end: string; type: string; web?: string; desc?: string }[] = [
   { slug: "naperville-ribfest-2026", name: "Naperville Ribfest 2026", city: "Naperville", region: "IL", venue: "Knoch Park, Naperville, IL", lat: 41.7508, lng: -88.1535, start: "2026-07-03", end: "2026-07-05", type: "rib" },
   { slug: "ribfest-chicago-2026", name: "Ribfest Chicago 2026", city: "Chicago", region: "IL", venue: "Chicago, IL (North Center)", lat: 41.9484, lng: -87.6553, start: "2026-06-05", end: "2026-06-07", type: "rib" },
   { slug: "happy-harrys-ribfest-2026", name: "Happy Harry's Ribfest 2026", city: "West Fargo", region: "ND", venue: "Red River Valley Fairgrounds, West Fargo, ND", lat: 46.8747, lng: -96.9003, start: "2026-08-13", end: "2026-08-16", type: "rib" },
-  { slug: "columbus-jazz-rib-2026", name: "Columbus Jazz & Rib Fest 2026", city: "Columbus", region: "OH", venue: "Scioto Mile, Columbus, OH", lat: 39.9612, lng: -82.9988, start: "2026-07-24", end: "2026-07-26", type: "rib" },
+  { slug: "columbus-jazz-rib-2026", name: "Columbus Jazz & Rib Fest 2026", city: "Columbus", region: "OH", venue: "West Bank & Bicentennial Park, Scioto Mile, Columbus, OH", lat: 39.9556, lng: -83.0033, start: "2026-07-24", end: "2026-07-26", type: "rib",
+    web: "https://www.hotribscooljazz.org/",
+    desc: "A FREE summertime tradition on the downtown riverfront — the finest in live jazz across multiple stages, paired with award-winning pitmasters serving smoky BBQ. Presented by Columbus Recreation & Parks. Fri–Sat 11am–10pm, Sun 11am–8pm." },
   { slug: "best-in-the-west-nugget-2026", name: "Best in the West Nugget Rib Cook-off 2026", city: "Sparks", region: "NV", venue: "Nugget Casino Resort, Sparks, NV", lat: 39.5349, lng: -119.7527, start: "2026-08-26", end: "2026-09-07", type: "rib" },
   { slug: "brushy-creek-bbq-2026", name: "Brushy Creek Backyard BBQ Cook-Off 2026", city: "Round Rock", region: "TX", venue: "Brushy Creek Community Center Park, Round Rock, TX", lat: 30.5083, lng: -97.6789, start: "2026-05-02", end: "2026-05-02", type: "rib" },
   { slug: "sweetwater-rattlesnake-2026", name: "Sweetwater Rattlesnake Roundup 2026", city: "Sweetwater", region: "TX", venue: "Nolan County Coliseum, Sweetwater, TX", lat: 32.4709, lng: -100.4059, start: "2026-03-13", end: "2026-03-15", type: "chili" },
@@ -29,11 +31,22 @@ const NEW_VENDORS = [
   { slug: "porky-chicks-bbq", name: "Porky Chicks BBQ", home: "Buffalo, NY", base: 8.7, items: [["Competition Ribs", "Ribs", 1700, "rib"], ["Smoked Chicken", "Chicken", 1200, null]] },
   { slug: "lone-star-chili-co", name: "Lone Star Chili Co.", home: "San Antonio, TX", base: 8.8, items: [["Championship Chili", "Chili", 800, null], ["Green Chile Stew", "Chili", 900, null]] },
   { slug: "five-alarm-chili", name: "Five Alarm Chili Co.", home: "Terlingua, TX", base: 8.3, items: [["Terlingua Red", "Chili", 800, null], ["Brisket Chili", "Chili", 1000, null]] },
+  // ── Columbus Jazz & Rib Fest 2026 — real lineup (hotribscooljazz.org/food-vendors) ──
+  { slug: "armadillos-bbq", name: "Armadillo's BBQ", home: "Touring nationwide", base: 8.4, items: [["St. Louis Ribs", "Ribs", 1600, "rib"], ["Smoked Chicken", "Chicken", 1200, null]] },
+  { slug: "austins-texas-lightning", name: "Austin's Texas Lightning", home: "Austin, TX", base: 8.5, items: [["Texas Lightning Ribs", "Ribs", 1700, "rib"], ["Brisket", "Brisket", 1800, null]] },
+  { slug: "carolina-rib-king", name: "Carolina Rib King", home: "South Carolina", base: 8.6, items: [["Carolina Ribs", "Ribs", 1600, "rib"], ["Pulled Pork", "Pulled Pork", 1100, null]] },
+  { slug: "chicago-bbq-company", name: "Chicago BBQ Company", home: "Chicago, IL", base: 8.2, items: [["Chicago-Style Ribs", "Ribs", 1600, "rib"]] },
+  { slug: "mojos-famous-bbq", name: "Mojo's Famous BBQ", home: "Touring since 2001", base: 8.7, items: [["Famous Ribs", "Ribs", 1700, "rib"], ["Burnt Ends", "Burnt Ends", 1400, null]] },
+  { slug: "buck-em-bbq", name: "Buck 'Em BBQ", home: "Touring nationwide", base: 8.3, items: [["Competition Ribs", "Ribs", 1600, "rib"]] },
+  { slug: "off-the-bone-bbq", name: "Off The Bone BBQ", home: "Touring nationwide", base: 8.5, items: [["Fall-Off-The-Bone Ribs", "Ribs", 1700, "rib"], ["Secret Sauce Sampler", "Sauce", 900, null]] },
+  { slug: "belly-out-bbq", name: "Belly Out BBQ", home: "Columbus, OH", base: 8.8, items: [["Award Brisket", "Brisket", 1900, null], ["Pork Belly Bites", "Pulled Pork", 1300, null]] },
+  { slug: "taestys", name: "Taesty's", home: "Columbus, OH", base: 8.1, items: [["Fried Chicken & Mac", "Chicken", 1300, null]] },
+  { slug: "juniors-sweetpotato-pie", name: "Junior's Sweetpotato Pie", home: "Columbus, OH", base: 9.0, items: [["Sweet Potato Pie", "Dessert", 600, null]] },
 ] as const;
 
 // vendorSlug → [ [eventSlug, ratingDelta] ]  (touring vendors span many events)
 const APPEARANCES: Record<string, [string, number][]> = {
-  "cowboys-bbq": [["naperville-ribfest-2026", 0.2], ["brushy-creek-bbq-2026", 0.1], ["sweetwater-rattlesnake-2026", 0.1], ["pflugerville-chili-pfest-2026", -0.2]],
+  "cowboys-bbq": [["naperville-ribfest-2026", 0.2], ["brushy-creek-bbq-2026", 0.1], ["sweetwater-rattlesnake-2026", 0.1], ["pflugerville-chili-pfest-2026", -0.2], ["columbus-jazz-rib-2026", 0.2]],
   "aussom-aussie": [["naperville-ribfest-2026", 0.3], ["ribfest-chicago-2026", 0.4], ["happy-harrys-ribfest-2026", 0.2]],
   "big-show-bbq": [["columbus-jazz-rib-2026", 0.1], ["best-in-the-west-nugget-2026", -0.1]],
   "bbq-king-smokehouse": [["columbus-jazz-rib-2026", 0.2], ["naperville-ribfest-2026", 0.1]],
@@ -41,7 +54,18 @@ const APPEARANCES: Record<string, [string, number][]> = {
   "franklin-road-smoke": [["naperville-ribfest-2026", 0.0]],
   "texas-outlaw-bbq": [["best-in-the-west-nugget-2026", 0.3], ["columbus-jazz-rib-2026", 0.2], ["ribfest-chicago-2026", 0.1]],
   "desperados-bbq": [["best-in-the-west-nugget-2026", 0.1], ["columbus-jazz-rib-2026", 0.0]],
-  "pigfoot-bbq": [["naperville-ribfest-2026", 0.3], ["ribfest-chicago-2026", 0.2], ["happy-harrys-ribfest-2026", 0.1]],
+  "pigfoot-bbq": [["naperville-ribfest-2026", 0.3], ["ribfest-chicago-2026", 0.2], ["happy-harrys-ribfest-2026", 0.1], ["columbus-jazz-rib-2026", 0.3]],
+  // Columbus lineup (real): traveling teams get a 2nd stop for graph density
+  "armadillos-bbq": [["columbus-jazz-rib-2026", 0.1], ["happy-harrys-ribfest-2026", 0.0]],
+  "austins-texas-lightning": [["columbus-jazz-rib-2026", 0.1], ["best-in-the-west-nugget-2026", 0.2]],
+  "carolina-rib-king": [["columbus-jazz-rib-2026", 0.2]],
+  "chicago-bbq-company": [["columbus-jazz-rib-2026", 0.0], ["ribfest-chicago-2026", 0.3]],
+  "mojos-famous-bbq": [["columbus-jazz-rib-2026", 0.2]],
+  "buck-em-bbq": [["columbus-jazz-rib-2026", 0.1]],
+  "off-the-bone-bbq": [["columbus-jazz-rib-2026", 0.1]],
+  "belly-out-bbq": [["columbus-jazz-rib-2026", 0.3]],
+  "taestys": [["columbus-jazz-rib-2026", 0.0]],
+  "juniors-sweetpotato-pie": [["columbus-jazz-rib-2026", 0.2]],
   "porky-chicks-bbq": [["happy-harrys-ribfest-2026", 0.2], ["columbus-jazz-rib-2026", 0.1]],
   "lone-star-chili-co": [["pflugerville-chili-pfest-2026", 0.3], ["sweetwater-rattlesnake-2026", 0.2]],
   "five-alarm-chili": [["sweetwater-rattlesnake-2026", 0.4], ["pflugerville-chili-pfest-2026", 0.1]],
@@ -71,7 +95,7 @@ async function main() {
     const isChili = e.type === "chili";
     const row = await db.event.upsert({
       where: { slug: e.slug }, update: { isTest: true },
-      create: { name: e.name, slug: e.slug, venue: e.venue, city: e.city, region: e.region, lat: e.lat, lng: e.lng, geoRadiusM: 800, startDate: D(e.start), endDate: D(e.end), status: "ACTIVE", official: false, containerKind: "EVENT", eventTypeId: (isChili ? chili.id : festival?.id), config: { features: { ordering: false, voting: isChili } }, isTest: true },
+      create: { name: e.name, slug: e.slug, venue: e.venue, city: e.city, region: e.region, lat: e.lat, lng: e.lng, geoRadiusM: 800, startDate: D(e.start), endDate: D(e.end), website: e.web ?? null, description: e.desc ?? null, status: "ACTIVE", official: false, containerKind: "EVENT", eventTypeId: (isChili ? chili.id : festival?.id), config: { features: { ordering: false, voting: isChili } }, isTest: true },
     });
     eventBy.set(e.slug, row.id);
   }
