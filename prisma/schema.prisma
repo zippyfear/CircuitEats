@@ -591,3 +591,12 @@ model PhotoFlag {
   @@unique([userId, photoId])
   @@index([photoId])
 }
+
+// Admin-tunable moderation thresholds (singleton row id=default).
+model ModerationConfig {
+  id                String   @id @default("default")
+  flagHideThreshold Int      @default(3)   // distinct flags to hide a photo
+  photoBanStrikes   Int      @default(3)   // strikes to block photo posting
+  ratingBanStrikes  Int      @default(5)   // strikes to block rating
+  updatedAt         DateTime @updatedAt @default(now())
+}

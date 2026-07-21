@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     await db.photoFlag.create({ data: { userId: user.id, photoId, reason: reason ? String(reason).slice(0, 200) : null } });
     const count = await db.photoFlag.count({ where: { photoId } });
     await db.photo.update({ where: { id: photoId }, data: { flagCount: count } });
-    await applyFlagCascade(photoId);
+    await applyFlagCascade(photoId, user.id);
   }
   return NextResponse.json({ ok: true });
 }
