@@ -20,7 +20,7 @@ async function main() {
   console.log(`🧨 truncated ${TABLES.length} tables`);
   await db.$disconnect();
   console.log("🌱 seeding…");
-  execSync("npx tsx prisma/seed.ts && npx tsx prisma/seed-extras.ts", { stdio: "inherit", cwd: process.cwd() });
+  execSync("npx tsx prisma/seed.ts && npx tsx prisma/seed-extras.ts && npx tsx prisma/seed-circuit.ts", { stdio: "inherit", cwd: process.cwd() });
   console.log("✅ reset complete — clean, deterministic dev DB.");
 }
 main().catch((e) => { console.error(e); process.exit(1); });

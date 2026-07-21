@@ -46,6 +46,12 @@ async function main() {
   check("category per-unit (rib avg)", cat.ranking[0]?.unit === "rib" && cat.ranking[0]?.avgUnitCents > 0);
   const vert = await (await get("/api/verticals")).json();
   check("verticals: Circuit + 7", vert.platform?.brandName === "Circuit" && vert.verticals?.length === 7);
+  // multi-event graph: homepage lists several events; a touring vendor appears at >1 event
+  const events = await db.event.count();
+  check("multi-event graph (≥8 events)", events >= 8);
+  const touring = await db.appearance.count({ where: { vendorId: cowboys.id } });
+  check("touring vendor has multiple appearances", touring >= 2);
+  check("all data flagged isTest", (await db.vendor.count({ where: { isTest: false } })) === 0 && (await db.event.count({ where: { isTest: false } })) === 0);
 
   // gates (anon)
   check("anon rate → 401", (await post("/api/rate", { itemId: "x", vendorId: "x", score: 5 })).status === 401);

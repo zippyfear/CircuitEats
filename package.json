@@ -10,7 +10,9 @@
     "seed": "tsx prisma/seed.ts",
     "seed:extras": "tsx prisma/seed-extras.ts",
     "reset": "tsx prisma/reset.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "seed:circuit": "tsx prisma/seed-circuit.ts",
+    "purge:test": "tsx prisma/purge-test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

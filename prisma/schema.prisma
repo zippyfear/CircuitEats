@@ -135,6 +135,7 @@ model User {
   displayName   String?
   avatarUrl     String?
   reviewerScore Float          @default(0.5)  // 0–1 trust; scales rating weight (§15 #8)
+  isTest        Boolean        @default(false)   // seeded demo data — purge before prod
   ratingMode    RatingMode     @default(SIMPLE)  // simple=overall only; detailed=tags+note+photo
   photoStrikes  Int            @default(0)   // crowd-banned photos → strikes
   photoBanned   Boolean        @default(false)
@@ -168,6 +169,7 @@ model Vendor {
   customLinks  Json?                        // [{label,url,type}] — CTAs: "order on our site", "book us"
   theme        Json?                        // optional per-vendor accent overrides
   status       VendorStatus @default(ACTIVE)
+  isTest       Boolean      @default(false)   // seeded demo data — purge before prod
   // claiming / verification (§7)
   claimed      Boolean      @default(false)
   ownerUserId  String?      @unique
@@ -236,6 +238,7 @@ model Event {
   website         String?
   description      String?
   status          EventStatus  @default(ACTIVE)
+  isTest          Boolean      @default(false)   // seeded demo data — purge before prod
   official        Boolean      @default(false)  // organizer-claimed vs crowd-created
   organizerUserId String?
   // ── platform / multi-tenancy (§20) ──
