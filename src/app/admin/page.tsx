@@ -7,6 +7,7 @@ const CARDS: [string, string, string][] = [
   ["/admin/events", "Events", "Override event name, venue, city, dates, status"],
   ["/admin/vendors", "Vendors & menus", "Override any vendor's info, menu items, portions & pricing"],
   ["/admin/promo", "Promo CTR", "SmokeStack footer performance by event / city"],
+  ["/admin/merge", "Merge vendors", "Fold a duplicate vendor into the canonical one — audited + reversible"],
   ["/admin/audit", "Audit log", "Every change, who made it, when — with one-click rollback"],
 ];
 

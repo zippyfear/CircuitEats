@@ -461,3 +461,13 @@ a{color:inherit;text-decoration:none}
 /* ── #9 order ETA + pending-order card ── */
 .order-eta { display:inline-block; font-size:14px; font-weight:800; color:var(--accent-ink); background:var(--accent-soft); padding:5px 12px; border-radius:999px; margin:2px 0 8px; }
 .order-eta.ready { color:#0a7d3c; background:#e6f6ec; }
+/* ── #10 vendor merge (admin) ── */
+.mergefield { margin-bottom: 10px; }
+.mergefield label { display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+.mergefield select { width:100%; padding:9px 11px; border-radius:9px; border:1px solid var(--line); background:var(--surface2,#fff); color:var(--ink); font-size:13.5px; }
+.mergearrow { text-align:center; font-size:12px; font-weight:700; color:var(--accent-ink); margin:6px 0; }
+.mergemsg { margin-top:12px; padding:10px 12px; border-radius:9px; font-size:13px; font-weight:600; }
+.mergemsg.ok { background:#e6f6ec; color:#0a7d3c; }
+.mergemsg.err { background:#fdeceb; color:var(--bad,#c0392b); }
+.linkbtn { background:none; border:0; color:var(--accent-ink); font-weight:700; cursor:pointer; padding:0; font-size:13px; }
+.linkbtn:hover { text-decoration:underline; }

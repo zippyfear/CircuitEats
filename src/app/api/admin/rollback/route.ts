@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { currentAdmin } from "@/lib/roles";
 import { recordAudit, snapFor } from "@/lib/audit";
+import { recomputeVendor } from "@/lib/vendorAggregate";
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj => (v && typeof v === "object" ? (v as Obj) : {});
@@ -56,6 +57,30 @@ export async function POST(req: Request) {
       } else if (action === "UPDATE") {
         await db.membership.update({ where: { id: entityId }, data: { role: before.role as never } });
       }
+    } else if (entityType === "VendorMerge") {
+      // undo a merge: move the reassigned rows back to the source, recreate the
+      // duplicate follows that were deleted, and restore the source's status.
+      const m = obj(before.moved);
+      const ids = (k: string) => (Array.isArray(m[k]) ? (m[k] as string[]) : []);
+      const srcId = String(before.sourceId ?? entityId);
+      const tgtId = String(before.targetId ?? "");
+      await db.$transaction(async (tx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const back = (rel: any, list: string[]) => (list.length ? rel.updateMany({ where: { id: { in: list } }, data: { vendorId: srcId } }) : Promise.resolve());
+        await back(tx.rating, ids("ratings"));
+        await back(tx.item, ids("items"));
+        await back(tx.photo, ids("photos"));
+        await back(tx.vote, ids("votes"));
+        await back(tx.vendorView, ids("views"));
+        await back(tx.appearance, ids("appearances"));
+        await back(tx.follow, ids("follows"));
+        const df = Array.isArray(before.deletedFollows) ? (before.deletedFollows as Obj[]) : [];
+        for (const f of df) await tx.follow.create({ data: { userId: String(f.userId), targetType: "VENDOR", vendorId: srcId, eventId: (f.eventId as string) ?? null } });
+        await tx.vendor.update({ where: { id: srcId }, data: { status: (before.sourcePrevStatus as never) ?? "ACTIVE", mergedIntoId: (before.sourcePrevMergedIntoId as string) ?? null } });
+      });
+      await recomputeVendor(srcId);
+      if (tgtId) await recomputeVendor(tgtId);
+      affectedId = srcId;
     } else {
       return NextResponse.json({ error: `Rollback not supported for ${entityType} ${action}.` }, { status: 400 });
     }
