@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/roles";
 import { getPosAdapter, type PosOrderLine } from "@/lib/pos";
 import { checkLimit } from "@/lib/ratelimit";
+import { appearanceEta } from "@/lib/orderEta";
 
 // Place an order → build it, save it, hand it to the vendor's POS (mock/real).
 export async function POST(req: Request) {
@@ -61,5 +62,11 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" }, take: 10,
     include: { items: true, appearance: { include: { vendor: { select: { name: true } } } } },
   });
-  return NextResponse.json({ orders });
+  // attach live ETA (queue depth + historical prep) to orders still in the kitchen
+  const withEta = await Promise.all(orders.map(async (o) => {
+    const active = o.status === "PLACED" || o.status === "PREPARING";
+    const eta = active ? await appearanceEta(o.appearanceId, o.createdAt) : null;
+    return { ...o, eta };
+  }));
+  return NextResponse.json({ orders: withEta });
 }

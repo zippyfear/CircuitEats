@@ -3,21 +3,27 @@ import { useEffect, useRef, useState } from "react";
 
 type MItem = { id: string; name: string; category: string; variants: { label: string; priceCents: number }[]; basePrice: number | null; ratingAvg: number; ratingCount: number };
 type Line = { key: string; itemId: string; name: string; variantLabel: string | null; priceCents: number; qty: number };
-type OrderView = { id: string; status: string; totalCents: number; tableLabel: string | null; posOrderId: string | null; posProvider: string | null; items: { nameSnap: string; variantLabel: string | null; qty: number; priceCents: number }[] };
+type Eta = { ahead: number; etaMin: number; avgPrep: number };
+type OrderView = { id: string; status: string; totalCents: number; tableLabel: string | null; posOrderId: string | null; posProvider: string | null; items: { nameSnap: string; variantLabel: string | null; qty: number; priceCents: number }[]; eta?: Eta | null };
 
 const money = (c: number) => "$" + (c % 100 === 0 ? (c / 100).toFixed(0) : (c / 100).toFixed(2));
 const STATUS_LABEL: Record<string, string> = { PLACED: "Sent to kitchen", PREPARING: "Preparing", READY: "Ready for pickup", PICKED_UP: "Picked up", CANCELED: "Canceled" };
 
-export default function OrderPanel({ appearanceId, vendorName, menu, authed, canOrder, slug, initialTable, tableLocked }: { appearanceId: string; vendorName: string; menu: MItem[]; authed: boolean; canOrder: boolean; slug: string; initialTable?: string | null; tableLocked?: boolean }) {
+export default function OrderPanel({ appearanceId, vendorName, menu, authed, canOrder, slug, initialTable, tableLocked, initialOrder }: { appearanceId: string; vendorName: string; menu: MItem[]; authed: boolean; canOrder: boolean; slug: string; initialTable?: string | null; tableLocked?: boolean; initialOrder?: OrderView | null }) {
   const [cart, setCart] = useState<Line[]>([]);
   const [sel, setSel] = useState<Record<string, string>>({});
   const [table, setTable] = useState(initialTable ?? "");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
-  const [placed, setPlaced] = useState<OrderView | null>(null);
+  const [placed, setPlaced] = useState<OrderView | null>(initialOrder ?? null);
   const poll = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => () => { if (poll.current) clearInterval(poll.current); }, []);
+  // resume polling a still-active order that was loaded with the page (persistent pending view)
+  useEffect(() => {
+    if (initialOrder && (initialOrder.status === "PLACED" || initialOrder.status === "PREPARING")) startPoll(initialOrder.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function priceFor(it: MItem, variantLabel: string | null) {
     if (variantLabel) return it.variants.find((v) => v.label === variantLabel)?.priceCents ?? 0;
@@ -60,6 +66,10 @@ export default function OrderPanel({ appearanceId, vendorName, menu, authed, can
       <div className="card" style={{ padding: 18 }}>
         <div className="eyebrow" style={{ margin: 0 }}>Your order</div>
         <div style={{ fontSize: 20, fontWeight: 800, margin: "6px 0" }}>{STATUS_LABEL[placed.status] ?? placed.status}</div>
+        {placed.eta && (placed.status === "PLACED" || placed.status === "PREPARING") && (
+          <div className="order-eta">⏱ ~{placed.eta.etaMin} min{placed.eta.ahead > 0 ? ` · ${placed.eta.ahead} ${placed.eta.ahead === 1 ? "order" : "orders"} ahead` : " · you're next"}</div>
+        )}
+        {placed.status === "READY" && <div className="order-eta ready">🔔 Ready for pickup{placed.tableLabel ? ` · Table ${placed.tableLabel}` : ""}</div>}
         {placed.tableLabel && <div className="muted" style={{ fontSize: 13 }}>Table {placed.tableLabel}</div>}
         <div style={{ margin: "10px 0" }}>{placed.items.map((i, n) => <div key={n} className="v-sub" style={{ fontSize: 13 }}>{i.qty}× {i.nameSnap}{i.variantLabel ? ` (${i.variantLabel})` : ""} — {money(i.priceCents * i.qty)}</div>)}</div>
         <div style={{ fontWeight: 800 }}>Total {money(placed.totalCents)}</div>

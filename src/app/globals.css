@@ -458,3 +458,6 @@ a{color:inherit;text-decoration:none}
 .notifbell:hover { background:var(--surface2); }
 .notifbell-ico { line-height:1; filter:grayscale(.2); }
 .notifdot { position:absolute; top:2px; right:1px; min-width:15px; height:15px; padding:0 3px; border-radius:999px; background:var(--accent); color:#fff; font-size:10px; font-weight:800; line-height:15px; text-align:center; box-shadow:0 0 0 2px var(--bg); }
+/* ── #9 order ETA + pending-order card ── */
+.order-eta { display:inline-block; font-size:14px; font-weight:800; color:var(--accent-ink); background:var(--accent-soft); padding:5px 12px; border-radius:999px; margin:2px 0 8px; }
+.order-eta.ready { color:#0a7d3c; background:#e6f6ec; }

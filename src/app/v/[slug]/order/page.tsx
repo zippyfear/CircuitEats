@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { currentUser } from "@/lib/roles";
 import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
+import { appearanceEta } from "@/lib/orderEta";
 import OrderPanel from "@/components/OrderPanel";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,25 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
     ratingAvg: it.ratingAvg, ratingCount: it.ratingCount,
   }));
 
+  // persistent pending order: if this user already has an active order at this booth,
+  // load it (with live ETA) so it shows on page load / reload — not just right after placing.
+  let initialOrder = null;
+  if (me && appearance) {
+    const active = await db.order.findFirst({
+      where: { userId: me.id, appearanceId: appearance.id, status: { in: ["PLACED", "PREPARING", "READY"] } },
+      orderBy: { createdAt: "desc" }, include: { items: true },
+    });
+    if (active) {
+      const eta = (active.status === "PLACED" || active.status === "PREPARING") ? await appearanceEta(active.appearanceId, active.createdAt) : null;
+      initialOrder = {
+        id: active.id, status: active.status, totalCents: active.totalCents, tableLabel: active.tableLabel,
+        posOrderId: active.posOrderId, posProvider: active.posProvider,
+        items: active.items.map((i) => ({ nameSnap: i.nameSnap, variantLabel: i.variantLabel, qty: i.qty, priceCents: i.priceCents })),
+        eta,
+      };
+    }
+  }
+
   return (
     <main className="wrap" style={{ maxWidth: 620 }}>
       <a className="back" href={`/v/${slug}`}>‹ {vendor.name}</a>
@@ -49,7 +69,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
       {!appearance ? (
         <div className="card" style={{ padding: 16, color: "var(--muted)" }}>Ordering needs an active event/booth for this vendor.</div>
       ) : (
-        <OrderPanel appearanceId={appearance.id} vendorName={vendor.name} menu={menu} authed={!!me} canOrder={orderingOn} slug={slug} initialTable={tableFromQr} tableLocked={!!tableFromQr} />
+        <OrderPanel appearanceId={appearance.id} vendorName={vendor.name} menu={menu} authed={!!me} canOrder={orderingOn} slug={slug} initialTable={tableFromQr} tableLocked={!!tableFromQr} initialOrder={initialOrder} />
       )}
     </main>
   );
