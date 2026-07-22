@@ -1,4 +1,5 @@
 import AuthNav from "@/components/AuthNav";
+import NotifBell from "@/components/NotifBell";
 
 // Global site header — appears on every page via the root layout.
 // Brand → home; primary nav (Events / Vendors / Circuit); search; auth.
@@ -19,6 +20,7 @@ export default function SiteHeader() {
         <form className="sh-search" action="/search" role="search">
           <input type="search" name="q" placeholder="Search…" aria-label="Search vendors and events" />
         </form>
+        <NotifBell />
         <div className="sh-auth"><AuthNav /></div>
       </div>
     </header>

@@ -142,6 +142,7 @@ model User {
   ratingBanned  Boolean        @default(false)
   ratings       Rating[]
   follows       Follow[]
+  notifsSeenAt  DateTime? // in-app notification read cursor
   contributions Contribution[]
   photos        Photo[]
   orders        Order[]
