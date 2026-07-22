@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-type MItem = { id: string; name: string; category: string; variants: { label: string; priceCents: number }[]; basePrice: number | null };
+type MItem = { id: string; name: string; category: string; variants: { label: string; priceCents: number }[]; basePrice: number | null; ratingAvg: number; ratingCount: number };
 type Line = { key: string; itemId: string; name: string; variantLabel: string | null; priceCents: number; qty: number };
 type OrderView = { id: string; status: string; totalCents: number; tableLabel: string | null; posOrderId: string | null; posProvider: string | null; items: { nameSnap: string; variantLabel: string | null; qty: number; priceCents: number }[] };
 
@@ -74,7 +74,7 @@ export default function OrderPanel({ appearanceId, vendorName, menu, authed, can
       <div className="card" style={{ padding: 0 }}>
         {menu.map((it) => (
           <div className="item" key={it.id}>
-            <div className="info"><div className="nm">{it.name}</div><div className="mt">{it.category}</div></div>
+            <div className="info"><div className="nm">{it.name}</div><div className="mt">{it.ratingCount > 0 ? <><span className="s">★ {it.ratingAvg.toFixed(1)}</span> · {it.category} · {it.ratingCount} {it.ratingCount === 1 ? "rating" : "ratings"}</> : it.category}</div></div>
             {it.variants.length > 0 && (
               <select value={sel[it.id] ?? it.variants[0].label} onChange={(e) => setSel({ ...sel, [it.id]: e.target.value })} style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface2)", color: "var(--ink)", fontSize: 12.5, maxWidth: 130 }}>
                 {it.variants.map((v) => <option key={v.label} value={v.label}>{v.label} · {money(v.priceCents)}</option>)}

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { currentUser } from "@/lib/roles";
+import { resolveEventConfig, PLATFORM_DEFAULTS } from "@/lib/config";
 import OrderPanel from "@/components/OrderPanel";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
     where: { slug },
     include: {
       items: { orderBy: { ratingAvg: "desc" }, include: { category: true, variants: { orderBy: { sortOrder: "asc" } } } },
-      appearances: { take: 1, orderBy: { createdAt: "desc" } },
+      appearances: { take: 1, orderBy: { createdAt: "desc" }, include: { event: true } },
     },
   });
   if (!vendor) notFound();
@@ -21,26 +22,34 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const conn = await db.posConnection.findUnique({ where: { vendorId: vendor.id } });
   const me = await currentUser();
 
+  // Ordering is gated: it takes an active POS connection AND the event enabling it.
+  // (features.ordering doubles as the config gate + the future non-payment kill-switch.)
+  const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
+  const orderingOn = !!conn && conn.active && !!cfg.features.ordering;
+
   const menu = vendor.items.map((it) => ({
     id: it.id, name: it.name, category: it.category?.name ?? "Other",
     variants: it.variants.map((v) => ({ label: v.label, priceCents: v.priceCents })),
     basePrice: it.typicalPriceCents ?? null,
+    ratingAvg: it.ratingAvg, ratingCount: it.ratingCount,
   }));
 
   return (
     <main className="wrap" style={{ maxWidth: 620 }}>
       <a className="back" href={`/v/${slug}`}>‹ {vendor.name}</a>
       <h1 style={{ fontSize: 23, letterSpacing: "-.02em", margin: "4px 0 2px" }}>Order from {vendor.name}</h1>
-      {conn ? (
-        <p className="muted" style={{ marginTop: 0, fontSize: 12.5 }}>Orders are sent to the vendor{conn.provider !== "MOCK" ? ` (${conn.provider})` : " (test mode)"} for the kitchen &amp; payment.</p>
+      {orderingOn ? (
+        <p className="muted" style={{ marginTop: 0, fontSize: 12.5 }}>Orders are sent to the vendor{conn && conn.provider !== "MOCK" ? ` (${conn.provider})` : " (test mode)"} for the kitchen &amp; payment.</p>
+      ) : conn ? (
+        <p className="muted" style={{ marginTop: 0 }}>Ordering isn&apos;t enabled for this event yet — browse the menu below.</p>
       ) : (
-        <p className="muted" style={{ marginTop: 0 }}>This vendor isn&apos;t set up for ordering yet.</p>
+        <p className="muted" style={{ marginTop: 0 }}>This vendor isn&apos;t set up for ordering yet — browse the menu below.</p>
       )}
-      {tableFromQr && <div className="tablebanner">🍽️ Ordering for <b>Table {tableFromQr}</b></div>}
+      {orderingOn && tableFromQr && <div className="tablebanner">🍽️ Ordering for <b>Table {tableFromQr}</b></div>}
       {!appearance ? (
         <div className="card" style={{ padding: 16, color: "var(--muted)" }}>Ordering needs an active event/booth for this vendor.</div>
       ) : (
-        <OrderPanel appearanceId={appearance.id} vendorName={vendor.name} menu={menu} authed={!!me} canOrder={!!conn} slug={slug} initialTable={tableFromQr} tableLocked={!!tableFromQr} />
+        <OrderPanel appearanceId={appearance.id} vendorName={vendor.name} menu={menu} authed={!!me} canOrder={orderingOn} slug={slug} initialTable={tableFromQr} tableLocked={!!tableFromQr} />
       )}
     </main>
   );

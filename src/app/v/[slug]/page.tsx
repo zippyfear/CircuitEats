@@ -44,6 +44,9 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
   // Config-driven vocabulary + feature-flags (§20) — resolved from this event's preset + overrides.
   const cfg = appearance ? await resolveEventConfig(appearance.event.slug) : PLATFORM_DEFAULTS;
+  // Ordering entry points are gated: event must enable ordering AND the vendor must have
+  // an active POS connection (the flag doubles as the future non-payment kill-switch).
+  const orderingOn = !!cfg.features.ordering && !!(await db.posConnection.findFirst({ where: { vendorId: vendor.id, active: true } }));
   const me = await currentUser(); // view is open; rating/wait actions gated on sign-in
   const authed = !!me;
   const isOwner = !!me && vendor.ownerUserId === me.id;
@@ -103,7 +106,7 @@ export default async function VendorPage({ params }: { params: Promise<{ slug: s
 
       <div className="vactions">
         <FollowButton vendorId={vendor.id} initialFollowing={following} initialCount={followCount} authed={authed} />
-        <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/order`}>🧾 Order</a>
+        {orderingOn && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/order`}>🧾 Order</a>}
         {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/edit`}>✎ Edit</a>}
         {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/analytics`}>📊 Analytics</a>}
         {(isOwner || isAdmin) && <a className="editlink" style={{ margin: 0 }} href={`/v/${vendor.slug}/orders`}>🧾 Queue</a>}
