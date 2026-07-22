@@ -12,6 +12,7 @@ export default function SiteHeader() {
         </a>
         <nav className="sh-links">
           <a href="/">Events</a>
+          <a href="/near">Near me</a>
           <a href="/vendors">Vendors</a>
           <a href="/family">Circuit</a>
         </nav>
